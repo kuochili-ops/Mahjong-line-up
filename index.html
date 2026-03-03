@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>大滿貫 - GitHub 圖資版</title>
+    <title>大滿貫 - GitHub 資源修復版</title>
     <style>
         :root {
             --bg-color: #064e3b;
@@ -20,12 +20,20 @@
         .column { display: flex; flex-direction: column; gap: 4px; width: var(--tile-w); border-radius: 4px; transition: 0.3s; }
         .column.selectable { background: rgba(251, 191, 36, 0.3); box-shadow: 0 0 10px #fbbf24; cursor: pointer; }
 
-        .tile { width: var(--tile-w); height: var(--tile-h); background: #fff; border-radius: 4px; display: flex; justify-content: center; align-items: center; border: 1px solid #999; }
-        .tile img { width: 100%; height: 100%; object-fit: contain; }
+        .tile { 
+            width: var(--tile-w); height: var(--tile-h); background: #fff; border-radius: 4px; 
+            display: flex; justify-content: center; align-items: center; border: 1px solid #999;
+            position: relative; overflow: hidden;
+        }
+        .tile img { width: 90%; height: 90%; object-fit: contain; display: block; }
         
-        /* 蓋牌樣式：完全遮擋內容 */
+        /* 蓋牌樣式 */
         .tile.hidden { background: linear-gradient(135deg, #1e5e3a, #0d3b24); border: 1px solid #fff3; }
-        .tile.hidden img { visibility: hidden; }
+        .tile.hidden img, .tile.hidden .fallback { display: none !important; }
+
+        /* 文字備援樣式 */
+        .fallback { color: #000; font-size: 18px; font-weight: bold; display: flex; flex-direction: column; align-items: center; }
+        .fallback span { font-size: 10px; color: #666; }
 
         #grid-cpu { transform: rotate(180deg); }
         .animate-push { animation: pushIn 0.3s ease-out; }
@@ -34,13 +42,12 @@
         .controls { padding: 20px; background: #000; display: flex; justify-content: center; align-items: center; gap: 30px; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
         .draw-btn { width: 80px; height: 100px; background: #15803d; border: 3px solid #fff; border-radius: 12px; font-size: 24px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; }
         .draw-btn.disabled { opacity: 0.3; pointer-events: none; }
-        .slot { width: 80px; height: 100px; background: #fff; border: 2px solid #fbbf24; border-radius: 12px; }
-        .slot img { width: 100%; height: 100%; }
+        .slot { width: 80px; height: 100px; background: #fff; border: 2px solid #fbbf24; border-radius: 12px; display: flex; justify-content: center; align-items: center; }
     </style>
 </head>
 <body>
 
-<div class="header" id="msg">載入 GitHub 圖資中...</div>
+<div class="header" id="msg">同步 GitHub 資源中...</div>
 
 <div class="game-main">
     <div class="board"><div class="grid" id="grid-cpu"></div></div>
@@ -53,8 +60,8 @@
 </div>
 
 <script>
-    // GitHub 資源路徑 (使用 jsDelivr CDN)
-    const ASSET_ROOT = "https://cdn.jsdelivr.net/gh/FluffyStuff/riichi-mahjong-tiles@master/svg/bordered/";
+    // 使用 jsDelivr CDN 讀取 black-desk/mahjim 的資源
+    const ASSET_ROOT = "https://cdn.jsdelivr.net/gh/black-desk/mahjim@master/svg/";
 
     const game = {
         p1Suit: 'm', cpuSuit: 'p', deck: [], p1Data: [], cpuData: [], 
@@ -62,10 +69,9 @@
 
         init() {
             const isM = Math.random() > 0.5;
-            this.p1Suit = isM ? 'Man' : 'Pin';
-            this.cpuSuit = isM ? 'Pin' : 'Man';
+            this.p1Suit = isM ? 'm' : 'p';
+            this.cpuSuit = isM ? 'p' : 'm';
             this.log(`你是【${isM?'萬子':'筒子'}】，電腦是【${isM?'筒子':'萬子'}】`);
-            
             this.buildDeck();
             this.p1Data = this.deck.splice(0, 36).map(c => ({...c, hidden: true}));
             this.cpuData = this.deck.splice(0, 36).map(c => ({...c, hidden: true}));
@@ -74,14 +80,14 @@
 
         buildDeck() {
             let cards = [];
+            const labels = { m: '萬', p: '筒', z: '中' };
             for(let i=1; i<=9; i++) {
                 for(let n=0; n<4; n++) {
-                    cards.push({ suit: 'Man', val: i, src: `${ASSET_ROOT}Man${i}.svg` });
-                    cards.push({ suit: 'Pin', val: i, src: `${ASSET_ROOT}Pin${i}.svg` });
+                    cards.push({ suit: 'm', val: i, label: labels.m, src: `${ASSET_ROOT}m${i}.svg` });
+                    cards.push({ suit: 'p', val: i, label: labels.p, src: `${ASSET_ROOT}p${i}.svg` });
                 }
             }
-            // 紅中 (Chun)
-            cards.push({ suit: 'Chun', val: 7, isWild: true, src: `${ASSET_ROOT}Chun.svg` });
+            cards.push({ suit: 'z', val: 7, label: labels.z, isWild: true, src: `${ASSET_ROOT}z7.svg` });
             this.deck = cards.sort(() => Math.random() - 0.5);
         },
 
@@ -101,8 +107,18 @@
         createTileEl(card) {
             const d = document.createElement('div');
             d.className = `tile ${card.hidden ? 'hidden' : ''}`;
+            
             const img = document.createElement('img');
             img.src = card.src;
+            // 圖片載入失敗時的處理
+            img.onerror = () => {
+                img.style.display = 'none';
+                const fall = document.createElement('div');
+                fall.className = 'fallback';
+                fall.innerHTML = `${card.isWild ? '中' : card.val}<span>${card.isWild ? '' : card.label}</span>`;
+                d.appendChild(fall);
+            };
+            
             d.appendChild(img);
             return d;
         },
@@ -117,13 +133,16 @@
         },
 
         async handleChain(card, currentTurn) {
-            document.getElementById('slot').innerHTML = `<img src="${card.src}">`;
-            await new Promise(r => setTimeout(r, 400));
+            const slot = document.getElementById('slot');
+            slot.innerHTML = '';
+            slot.appendChild(this.createTileEl(card));
+            
+            await new Promise(r => setTimeout(r, 450));
 
             let side = (card.suit === this.p1Suit) ? 'p1' : (card.suit === this.cpuSuit) ? 'cpu' : currentTurn;
 
             if (card.isWild && side === 'p1') {
-                this.log("★ 抽到紅中！請選擇一列推入 ★");
+                this.log("★ 紅中在手！請選擇一列推入 ★");
                 this.enableSelection(card);
                 return;
             }
@@ -155,7 +174,7 @@
             newTile.classList.add('animate-push');
             colEl.prepend(newTile);
 
-            await new Promise(r => setTimeout(r, 300));
+            await new Promise(r => setTimeout(r, 350));
 
             if(this.checkWin()) return;
             
