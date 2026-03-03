@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>白六麻將 - 唯一萬用版</title>
+    <title>白六麻將 - 絕對唯一萬用</title>
     <style>
         :root {
             --tile-w: calc((100vw - 60px) / 9); 
@@ -21,7 +21,7 @@
         .game-main { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: calc(var(--tile-h) + 15px); }
         .grid { display: flex; gap: var(--gap); justify-content: center; }
         .column { display: flex; flex-direction: column; gap: var(--gap); width: var(--tile-w); position: relative; border-radius: 4px; transition: 0.2s; }
-        .column.highlight { background: rgba(251, 191, 36, 0.3); box-shadow: 0 0 10px #fbbf24; }
+        .column.highlight { background: rgba(251, 191, 36, 0.4); box-shadow: 0 0 15px #fbbf24; z-index: 5; }
         .entry-slot { 
             position: absolute; width: var(--tile-w); height: var(--tile-h); 
             top: calc((var(--tile-h) + var(--gap)) * -1); 
@@ -41,14 +41,14 @@
         #grid-cpu { transform: rotate(180deg); }
         .controls { padding: 10px; background: #000; display: flex; justify-content: center; align-items: center; gap: 15px; flex-shrink: 0; }
         .draw-btn { width: 60px; height: 75px; background: #15803d; border: 2px solid #fff; border-radius: 8px; font-size: 16px; font-weight: bold; color: #fff; }
-        .draw-btn.disabled { opacity: 0.3; }
+        .draw-btn.disabled { opacity: 0.3; pointer-events: none; }
         .slot-preview { width: 55px; height: 70px; background: #fff; border-radius: 6px; font-size: 35px; display: flex; justify-content: center; align-items: center; color: #000; }
         #overlay { position: fixed; inset: 0; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100; background: rgba(0,0,0,0.85); font-size: 30px; }
     </style>
 </head>
 <body>
 <div id="overlay"></div>
-<div class="header" id="msg">正在洗牌...</div>
+<div class="header" id="msg">正在初始化精確牌組...</div>
 <div class="game-main">
     <div class="board"><div class="grid" id="grid-cpu"></div></div>
     <div class="board"><div class="grid" id="grid-p1"></div></div>
@@ -90,11 +90,15 @@
             const keys = Object.keys(MASTERS).sort(() => Math.random() - 0.5);
             this.p1 = { name: keys[0], tiles: MASTERS[keys[0]] };
             this.cpu = { name: keys[1], tiles: MASTERS[keys[1]] };
+            
+            // 從剩餘牌池中隨機挑選一張作為「唯一的萬用牌」
             const wildPool = [...MASTERS[keys[2]], ...OTHERS];
             this.wildChar = wildPool[Math.floor(Math.random() * wildPool.length)];
 
             this.log(`你是【${this.p1.name}】，電腦是【${this.cpu.name}】`);
             this.buildDeck();
+            
+            // 初始化數據
             this.p1Data = this.deck.splice(0, 36).map(c => ({...c, hidden: true}));
             this.cpuData = this.deck.splice(0, 36).map(c => ({...c, hidden: true}));
             this.render();
@@ -102,13 +106,18 @@
 
         buildDeck() {
             let cards = [];
+            // 雙方花色 36 + 36 = 72 張
             [this.p1, this.cpu].forEach(group => {
                 group.tiles.forEach((char, idx) => {
-                    for(let n=0; n<4; n++) cards.push({ group: group.name, val: idx+1, char: char, isWild: false });
+                    for(let n=0; n<4; n++) {
+                        cards.push({ group: group.name, val: idx+1, char: char, isWild: false });
+                    }
                 });
             });
             // 唯一的一張萬用牌
             cards.push({ group: 'wild', val: 0, char: this.wildChar, isWild: true });
+            
+            // 隨機打亂
             this.deck = cards.sort(() => Math.random() - 0.5);
         },
 
@@ -143,17 +152,35 @@
 
         async handleChain(card, currentTurn) {
             document.getElementById('slot-preview').innerText = card.char;
-            let side = (card.group === this.p1.name) ? 'p1' : (card.group === this.cpu.name) ? 'cpu' : currentTurn;
+            
+            // 嚴格判斷歸屬：只有 p1 或 cpu 花色會自動導向，其餘非 wild 牌視為中性牌(由當前方處理)
+            let side;
+            if (card.isWild) {
+                side = currentTurn; // 萬用牌保持在當前回合方
+            } else if (card.group === this.p1.name) {
+                side = 'p1';
+            } else if (card.group === this.cpu.name) {
+                side = 'cpu';
+            } else {
+                side = currentTurn; // 中性牌或錯誤牌保持在當前回合方
+            }
             
             if (side === 'p1') {
                 if (card.isWild) {
-                    this.log("★ 萬用牌：請點選欲推入的行列 ★");
+                    this.log("★ 唯一萬用牌！請選一列推入 ★");
                     this.enableColumnSelection(card);
                 } else {
-                    this.showEntryAndPrepareSlide(card.val - 1, card);
+                    const targetCol = (card.val >= 1 && card.val <= 9) ? (card.val - 1) : 0;
+                    this.showEntryAndPrepareSlide(targetCol, card);
                 }
             } else {
-                const col = (card.val >= 1 && card.val <= 9) ? (card.val - 1) : this.autoFindCol('cpu');
+                // 電腦回合
+                let col;
+                if (card.isWild) {
+                    col = this.autoFindCol('cpu'); // 電腦聰明選位
+                } else {
+                    col = (card.val >= 1 && card.val <= 9) ? (card.val - 1) : this.autoFindCol('cpu');
+                }
                 await new Promise(r => setTimeout(r, 600));
                 await this.executePush('cpu', col, card);
             }
@@ -171,9 +198,11 @@
         },
 
         showEntryAndPrepareSlide(col, card) {
-            this.log(card.isWild ? "萬用牌準備推入" : "按住牌向下滑動推入");
+            this.log(card.isWild ? "萬用牌：向下推入" : "普通牌：向下推入");
             const entry = document.getElementById(`entry-p1-${col}`);
-            entry.innerText = card.char; entry.classList.add('active');
+            entry.innerText = card.char;
+            entry.classList.add('active');
+            
             entry.ontouchstart = (e) => this.touchStartY = e.touches[0].clientY;
             entry.ontouchend = (e) => {
                 if ((e.changedTouches[0].clientY - this.touchStartY) > 25) {
@@ -188,9 +217,12 @@
             Sound.play();
             const data = (side === 'p1') ? this.p1Data : this.cpuData;
             const bumped = {...data[3 * 9 + col]};
+
+            // 推入邏輯
             for(let r=3; r>0; r--) data[r*9 + col] = {...data[(r-1)*9 + col]};
             data[col] = {...card, hidden: false};
 
+            // 動態效果
             const colEl = document.querySelector(`#grid-${side} .column[data-col="${col}"]`);
             const tiles = colEl.querySelectorAll('.tile');
             tiles.forEach(t => t.style.transform = 'translateY(var(--tile-h))');
@@ -199,14 +231,15 @@
             this.renderCol(side, col);
 
             if(this.checkWin()) return;
+            
+            // 被擠出的牌處理
             if(bumped && bumped.char) {
                 bumped.hidden = false;
-                let nextTurn = (bumped.group === this.p1.name) ? 'p1' : (bumped.group === this.cpu.name) ? 'cpu' : side;
-                await this.handleChain(bumped, nextTurn);
+                await this.handleChain(bumped, side); // 被擠出的牌繼續連鎖
             } else {
                 this.isBusy = false;
                 document.getElementById('draw-btn').classList.remove('disabled');
-                this.log(`${this.p1.name} VS ${this.cpu.name} (${this.deck.length}張)`);
+                this.log(`剩餘牌數: ${this.deck.length}`);
             }
         },
 
@@ -223,7 +256,8 @@
 
         autoFindCol(side) {
             const data = (side === 'p1') ? this.p1Data : this.cpuData;
-            for(let c=0; c<9; c++) if([0,1,2,3].some(r => data[r*9 + c].hidden)) return c;
+            // 優先找還有隱藏牌的列
+            for(let c=0; c<9; c++) if(data[3*9+c].hidden) return c;
             return Math.floor(Math.random() * 9);
         },
 
