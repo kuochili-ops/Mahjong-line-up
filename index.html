@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>大滿貫 - GitHub 資源同步版</title>
+    <style>
+        :root {
+            --bg-color: #064e3b;
+            --tile-w: calc((100vw - 40px) / 9);
+            --tile-h: calc(var(--tile-w) * 1.35);
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg-color); margin: 0; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; color: white; }
+        
+        .header { padding: 10px; text-align: center; background: rgba(0,0,0,0.8); color: #fbbf24; font-weight: bold; border-bottom: 2px solid #15803d; font-size: 14px; min-height: 44px; }
+        .game-main { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; gap: 30px; padding: 10px; }
+        .grid { display: flex; gap: 2px; justify-content: center; }
+        .column { display: flex; flex-direction: column; gap: 2px; width: var(--tile-w); background: rgba(0,0,0,0.3); border-radius: 4px; padding: 1px; transition: 0.3s; }
+        .column.selectable { background: rgba(251, 191, 36, 0.4); box-shadow: 0 0 15px #fbbf24; cursor: pointer; }
+
+        .tile { 
+            width: var(--tile-w); height: var(--tile-h); background: #fff; border-radius: 4px; 
+            display: flex; justify-content: center; align-items: center; 
+            box-shadow: 0 2px 2px rgba(0,0,0,0.3); border: 1px solid #ddd; flex-shrink: 0; position: relative;
+        }
+        .tile img { width: 90%; height: 90%; object-fit: contain; pointer-events: none; }
+        .tile.hidden { background: linear-gradient(135deg, #1e5e3a, #0d3b24); border: 1px solid rgba(255,255,255,0.2); }
+        .tile.hidden img { display: none !important; }
+
+        /* 當圖片失效時的文字備份 */
+        .tile.fallback-text { color: #000; font-size: 16px; font-weight: bold; flex-direction: column; }
+        .tile.fallback-text .sub { font-size: 9px; color: #666; }
+
+        #grid-cpu { transform: rotate(180deg); }
+        @keyframes pushIn { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .animate-push { animation: pushIn 0.2s ease-out forwards; }
+
+        .controls { padding: 20px; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; gap: 30px; padding-bottom: calc(25px + env(safe-area-inset-bottom)); }
+        .draw-btn { width: 80px; height: 100px; background: #15803d; border: 4px solid #fff; border-radius: 15px; color: white; font-size: 26px; font-weight: bold; display: flex; justify-content: center; align-items: center; box-shadow: 0 6px 0 #052e16; cursor: pointer; }
+        .draw-btn.disabled { opacity: 0.4; pointer-events: none; }
+        .slot { width: 80px; height: 100px; background: #fff; border: 4px solid #fbbf24; border-radius: 15px; display: flex; justify-content: center; align-items: center; }
+    </style>
+</head>
+<body>
+
+<div class="header" id="msg">抽籤決定花色...</div>
+
+<div class="game-main">
+    <div class="board"><div class="grid" id="grid-cpu"></div></div>
+    <div class="board"><div class="grid" id="grid-p1"></div></div>
+</div>
+
+<div class="controls">
+    <div class="draw-btn" id="draw-btn" onclick="game.startByDrawing()">抽</div>
+    <div class="slot" id="slot"></div>
+</div>
+
+<script>
+    // GitHub 資源路徑
+    const IMG_BASE = "https://raw.githubusercontent.com/black-desk/mahjim/master/svg/";
+
+    const game = {
+        p1Suit: 'm', cpuSuit: 'p', deck: [], p1Data: [], cpuData: [], 
+        isBusy: false, gameOver: false, pendingWild: null,
+
+        init() {
+            if(Math.random() > 0.5) {
+                this.p1Suit = 'p'; this.cpuSuit = 'm';
+                this.log(`你是【筒子】，電腦是【萬子】`);
+            } else {
+                this.p1Suit = 'm'; this.cpuSuit = 'p';
+                this.log(`你是【萬子】，電腦是【筒子】`);
+            }
+            this.buildDeck();
+            this.p1Data = this.deck.splice(0, 36).map(c => ({...c, hidden: true}));
+            this.cpuData = this.deck.splice(0, 36).map(c => ({...c, hidden: true}));
+            this.render();
+            this.bindEvents();
+        },
+
+        buildDeck() {
+            let cards = [];
+            const names = { 'm': '萬', 'p': '筒' };
+            for(let i=1; i<=9; i++) {
+                for(let n=0; n<4; n++) {
+                    cards.push({ suit: 'm', val: i, label: names['m'], src: `${IMG_BASE}m${i}.svg` });
+                    cards.push({ suit: 'p', val: i, label: names['p'], src: `${IMG_BASE}p${i}.svg` });
+                }
+            }
+            // 加入紅中 (z7.svg)
+            cards.push({ suit: 'z', val: 7, label: '中', isWild: true, src: `${IMG_BASE}z7.svg` });
+            this.deck = cards.sort(() => Math.random() - 0.5);
+        },
+
+        render() {
+            const drawGrid = (id, data) => {
+                const el = document.getElementById(id); el.innerHTML = '';
+                for(let col=0; col<9; col++) {
+                    const colDiv = document.createElement('div');
+                    colDiv.className = 'column'; colDiv.dataset.col = col; colDiv.dataset.side = id.split('-')[1];
+                    for(let row=0; row<4; row++) colDiv.appendChild(this.createTileEl(data[row*9+col]));
+                    el.appendChild(colDiv);
+                }
+            };
+            drawGrid('grid-p1', this.p1Data); drawGrid('grid-cpu', this.cpuData);
+        },
+
+        createTileEl(card) {
+            const d = document.createElement('div');
+            d.className = `tile ${card.hidden ? 'hidden' : ''}`;
+            
+            // 圖片載入邏輯：如果失敗則顯示文字備份
+            const img = document.createElement('img');
+            img.src = card.src;
+            img.onerror = () => {
+                img.style.display = 'none';
+                d.classList.add('fallback-text');
+                d.innerHTML = `<span>${card.isWild ? '中' : card.val}</span><span class="sub">${card.isWild ? '' : card.label}</span>`;
+            };
+            d.appendChild(img);
+            return d;
+        },
+
+        bindEvents() {
+            document.querySelectorAll('.column').forEach(el => {
+                el.onclick = () => {
+                    if (this.pendingWild && el.dataset.side === 'p1') {
+                        const col = parseInt(el.dataset.col);
+                        if (this.isColFull('p1', col)) return;
+                        this.resolveWild(col);
+                    }
+                };
+            });
+        },
+
+        async startByDrawing() {
+            if(this.isBusy || this.gameOver) return;
+            this.isBusy = true;
+            document.getElementById('draw-btn').classList.add('disabled');
+            await this.handleChain(this.deck.pop(), 'p1');
+            this.isBusy = false;
+        },
+
+        isColFull(side, col) {
+            const data = (side === 'p1') ? this.p1Data : this.cpuData;
+            return [0,1,2,3].every(r => !data[r*9 + col].hidden);
+        },
+
+        async handleChain(card, currentTurn) {
+            this.updateSlot(card);
+            await this.wait(400);
+
+            let side = (card.suit === this.p1Suit) ? 'p1' : 
+                       (card.suit === this.cpuSuit) ? 'cpu' : currentTurn;
+
+            // 紅中決策權 (玩家)
+            if (card.isWild && side === 'p1') {
+                this.log("★ 紅中在手！請點擊下方任一列推入 ★");
+                this.pendingWild = { card, side };
+                this.toggleSelectable(true);
+                return;
+            }
+
+            // 自動尋找列 (數字牌或電腦紅中)
+            let col = (card.val >= 1 && card.val <= 9) ? (card.val - 1) : this.autoFindCol(side);
+            if (this.isColFull(side, col)) col = this.autoFindCol(side);
+
+            await this.executePush(side, col, card);
+        },
+
+        autoFindCol(side) {
+            const data = (side === 'p1') ? this.p1Data : this.cpuData;
+            let bestCol = 0, maxHidden = -1;
+            for(let c=0; c<9; c++) {
+                let hiddenCount = [0,1,2,3].filter(r => data[r*9 + c].hidden).length;
+                if(hiddenCount > maxHidden) { maxHidden = hiddenCount; bestCol = c; }
+            }
+            return bestCol;
+        },
+
+        async resolveWild(col) {
+            this.toggleSelectable(false);
+            const { card, side } = this.pendingWild;
+            this.pendingWild = null;
+            await this.executePush(side, col, card);
+        },
+
+        async executePush(side, col, card) {
+            const bumped = await this.physicsPush(side, col, card);
+            if(bumped && !this.checkWin()) {
+                bumped.hidden = false;
+                let nextTurn = (bumped.suit === this.p1Suit) ? 'p1' : 
+                               (bumped.suit === this.cpuSuit) ? 'cpu' : side;
+                await this.handleChain(bumped, nextTurn);
+            }
+        },
+
+        toggleSelectable(on) {
+            document.querySelectorAll('#grid-p1 .column').forEach(el => {
+                el.classList.toggle('selectable', on);
+            });
+        },
+
+        async physicsPush(side, col, card) {
+            const data = (side === 'p1') ? this.p1Data : this.cpuData;
+            const bumped = {...data[3 * 9 + col]};
+            for(let r=3; r>0; r--) data[r * 9 + col] = {...data[(r-1) * 9 + col]};
+            data[col] = {...card, hidden: false};
+
+            const colEl = document.querySelector(`#grid-${side} .column[data-col="${col}"]`);
+            colEl.removeChild(colEl.lastElementChild);
+            const newTile = this.createTileEl(data[col]);
+            newTile.classList.add('animate-push');
+            colEl.prepend(newTile);
+
+            await this.wait(250);
+            return bumped;
+        },
+
+        updateSlot(c) {
+            const s = document.getElementById('slot');
+            s.innerHTML = '';
+            s.appendChild(this.createTileEl(c));
+        },
+
+        checkWin() {
+            const isFull = (data) => data.every(c => !c.hidden);
+            if(isFull(this.p1Data) || isFull(this.cpuData)) {
+                this.gameOver = true;
+                this.log(isFull(this.p1Data) ? "玩家大滿貫勝利！" : "電腦大滿貫勝利！");
+                return true;
+            }
+            return false;
+        },
+
+        log(t) { document.getElementById('msg').innerText = t; },
+        wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+    };
+
+    game.init();
+</script>
+</body>
+</html>
