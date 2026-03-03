@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>大滿貫 - 終極穩定版</title>
+    <title>大滿貫 - API 雲端圖資版</title>
     <style>
         :root {
             --bg-color: #064e3b;
@@ -13,34 +13,35 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg-color); margin: 0; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; color: white; }
         
+        /* 介面佈局 */
         .header { padding: 12px; text-align: center; background: rgba(0,0,0,0.8); color: #fbbf24; font-weight: bold; border-bottom: 2px solid #15803d; }
         .game-main { flex-grow: 1; display: flex; flex-direction: column; justify-content: space-around; padding: 10px; }
-        
         .grid { display: flex; gap: 4px; justify-content: center; }
         .column { display: flex; flex-direction: column; gap: 4px; width: var(--tile-w); border-radius: 4px; transition: 0.3s; border: 1px solid transparent; }
-        .column.selectable { background: rgba(251, 191, 36, 0.3); border-color: #fbbf24; cursor: pointer; }
+        .column.selectable { background: rgba(251, 191, 36, 0.3); border-color: #fbbf24; cursor: pointer; box-shadow: 0 0 15px #fbbf24; }
 
+        /* 牌面樣式 */
         .tile { 
             width: var(--tile-w); height: var(--tile-h); background: #fff; border-radius: 4px; 
             display: flex; justify-content: center; align-items: center; 
             box-shadow: inset -1px -1px 3px #ccc, 1px 1px 3px rgba(0,0,0,0.2);
             position: relative; overflow: hidden;
         }
-        /* 圖片與備援畫法的大小控制 */
-        .tile img, .tile svg { width: 90%; height: 95%; object-fit: contain; display: block; }
+        .tile img { width: 90%; height: 95%; object-fit: contain; display: block; }
         
-        /* 蓋牌狀態：完全隱藏內容，顯示背面 */
+        /* 蓋牌背面 */
         .tile.hidden { 
             background: linear-gradient(135deg, #166534, #064e3b); 
             box-shadow: inset 0 0 8px rgba(0,0,0,0.5);
             border: 1px solid rgba(255,255,255,0.1);
         }
-        .tile.hidden * { display: none !important; }
+        .tile.hidden img { display: none !important; }
 
         #grid-cpu { transform: rotate(180deg); }
-        .animate-push { animation: pushIn 0.3s ease-out forwards; }
         @keyframes pushIn { from { transform: translateY(-15px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .animate-push { animation: pushIn 0.3s ease-out forwards; }
 
+        /* 控制區 */
         .controls { padding: 20px; background: #000; display: flex; justify-content: center; align-items: center; gap: 30px; padding-bottom: calc(25px + env(safe-area-inset-bottom)); border-top: 1px solid #15803d; }
         .draw-btn { width: 80px; height: 100px; background: #15803d; border: 3px solid #fff; border-radius: 12px; color: #fff; font-size: 24px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; }
         .draw-btn.disabled { opacity: 0.3; pointer-events: none; }
@@ -49,7 +50,7 @@
 </head>
 <body>
 
-<div class="header" id="msg">正在初始化牌組...</div>
+<div class="header" id="msg">正在連接雲端圖資 API...</div>
 
 <div class="game-main">
     <div class="board"><div class="grid" id="grid-cpu"></div></div>
@@ -62,16 +63,8 @@
 </div>
 
 <script>
-    // 備援 SVG 畫法 (當 GitHub 圖片抓不到時自動啟用)
-    const FALLBACK_SVG = {
-        m: (val) => `<svg viewBox="0 0 100 125"><text x="50" y="55" text-anchor="middle" font-size="50" font-weight="bold" fill="#e11d48">${val}</text><text x="50" y="95" text-anchor="middle" font-size="35" font-weight="bold" fill="#e11d48">萬</text></svg>`,
-        p: (val) => `<svg viewBox="0 0 100 125"><text x="50" y="70" text-anchor="middle" font-size="60" font-weight="bold" fill="#2563eb">${val}</text><circle cx="50" cy="95" r="8" fill="#2563eb"/></svg>`,
-        z: () => `<svg viewBox="0 0 100 125"><text x="50" y="85" text-anchor="middle" font-size="80" font-weight="900" fill="#be123c">中</text></svg>`
-    };
-
-    // GitHub 資源路徑
-    const ASSET_ROOT = "https://cdn.jsdelivr.net/gh/FluffyStuff/riichi-mahjong-tiles@master/svg/bordered/";
-    const FILE_MAP = { m: 'Man', p: 'Pin', z: 'Chun' };
+    // 使用 mahgen 的 Vercel API
+    const API_BASE = "https://mahgen.vercel.app/api/tile?name=";
 
     const game = {
         p1Suit: 'm', cpuSuit: 'p', deck: [], p1Data: [], cpuData: [], 
@@ -92,11 +85,12 @@
             let cards = [];
             for(let i=1; i<=9; i++) {
                 for(let n=0; n<4; n++) {
-                    cards.push({ suit: 'm', val: i, src: `${ASSET_ROOT}Man${i}.svg` });
-                    cards.push({ suit: 'p', val: i, src: `${ASSET_ROOT}Pin${i}.svg` });
+                    cards.push({ suit: 'm', val: i, src: `${API_BASE}m${i}` });
+                    cards.push({ suit: 'p', val: i, src: `${API_BASE}p${i}` });
                 }
             }
-            cards.push({ suit: 'z', val: 7, isWild: true, src: `${ASSET_ROOT}Chun.svg` });
+            // 紅中
+            cards.push({ suit: 'z', val: 7, isWild: true, src: `${API_BASE}z7` });
             this.deck = cards.sort(() => Math.random() - 0.5);
         },
 
@@ -116,15 +110,10 @@
         createTileEl(card) {
             const d = document.createElement('div');
             d.className = `tile ${card.hidden ? 'hidden' : ''}`;
-            
             const img = new Image();
             img.src = card.src;
-            // 關鍵防錯：圖片失敗時切換到內嵌 SVG
-            img.onerror = () => {
-                img.remove();
-                d.innerHTML = FALLBACK_SVG[card.suit](card.val);
-            };
-            
+            // API 載入失敗備援
+            img.onerror = () => { d.innerHTML = `<b style="color:black">${card.val}</b>`; };
             d.appendChild(img);
             return d;
         },
@@ -140,14 +129,13 @@
 
         async handleChain(card, currentTurn) {
             const slot = document.getElementById('slot');
-            slot.innerHTML = '';
-            slot.appendChild(this.createTileEl(card));
+            slot.innerHTML = `<img src="${card.src}">`;
             await new Promise(r => setTimeout(r, 450));
 
             let side = (card.suit === this.p1Suit) ? 'p1' : (card.suit === this.cpuSuit) ? 'cpu' : currentTurn;
 
             if (card.isWild && side === 'p1') {
-                this.log("★ 紅中！請選擇一列推入 ★");
+                this.log("★ 紅中！請點擊下方一列推入 ★");
                 this.toggleSelectable(true);
                 this.pendingWild = { card, side };
                 return;
