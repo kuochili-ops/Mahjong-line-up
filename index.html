@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>大滿貫 - 專業對戰版</title>
+    <title>大滿貫 - GitHub 圖資版</title>
     <style>
         :root {
             --bg-color: #064e3b;
@@ -11,61 +11,36 @@
             --tile-h: calc(var(--tile-w) * 1.35);
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg-color); margin: 0; font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; color: white; }
+        body { background: var(--bg-color); margin: 0; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; color: white; }
         
-        .header { padding: 10px; text-align: center; background: rgba(0,0,0,0.8); color: #fbbf24; font-weight: bold; border-bottom: 2px solid #15803d; font-size: 15px; letter-spacing: 1px; }
+        .header { padding: 12px; text-align: center; background: rgba(0,0,0,0.8); color: #fbbf24; font-weight: bold; border-bottom: 2px solid #15803d; }
+        .game-main { flex-grow: 1; display: flex; flex-direction: column; justify-content: space-around; padding: 10px; }
         
-        .game-main { flex-grow: 1; display: flex; flex-direction: column; justify-content: space-evenly; padding: 10px; }
-        
-        .board { position: relative; }
-        .grid { display: flex; gap: 3px; justify-content: center; }
-        
-        .column { 
-            display: flex; flex-direction: column; gap: 3px; width: var(--tile-w); 
-            background: rgba(255,255,255,0.05); border-radius: 4px; padding: 2px; 
-            transition: all 0.3s; border: 1px solid transparent;
-        }
-        
-        /* 紅中可選時的呼吸燈效果 */
-        @keyframes glow { 0% { border-color: #fbbf24; box-shadow: 0 0 5px #fbbf24; } 50% { border-color: #fff; box-shadow: 0 0 15px #fff; } 100% { border-color: #fbbf24; box-shadow: 0 0 5px #fbbf24; } }
-        .column.selectable { background: rgba(251, 191, 36, 0.2); animation: glow 1.5s infinite; cursor: pointer; }
+        .grid { display: flex; gap: 4px; justify-content: center; }
+        .column { display: flex; flex-direction: column; gap: 4px; width: var(--tile-w); border-radius: 4px; transition: 0.3s; }
+        .column.selectable { background: rgba(251, 191, 36, 0.3); box-shadow: 0 0 10px #fbbf24; cursor: pointer; }
 
-        .tile { 
-            width: var(--tile-w); height: var(--tile-h); 
-            display: flex; justify-content: center; align-items: center; 
-            flex-shrink: 0; position: relative;
-        }
+        .tile { width: var(--tile-w); height: var(--tile-h); background: #fff; border-radius: 4px; display: flex; justify-content: center; align-items: center; border: 1px solid #999; }
+        .tile img { width: 100%; height: 100%; object-fit: contain; }
         
-        .tile svg { width: 100%; height: 100%; display: block; border-radius: 3px; }
+        /* 蓋牌樣式：完全遮擋內容 */
+        .tile.hidden { background: linear-gradient(135deg, #1e5e3a, #0d3b24); border: 1px solid #fff3; }
+        .tile.hidden img { visibility: hidden; }
 
         #grid-cpu { transform: rotate(180deg); }
-        
-        @keyframes pushIn { 0% { transform: translateY(-10px); opacity: 0.5; } 100% { transform: translateY(0); opacity: 1; } }
-        .animate-push { animation: pushIn 0.25s ease-out forwards; }
+        .animate-push { animation: pushIn 0.3s ease-out; }
+        @keyframes pushIn { from { transform: translateY(-15px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-        .controls { 
-            padding: 20px; background: linear-gradient(0deg, #000 0%, rgba(0,0,0,0.8) 100%); 
-            display: flex; justify-content: center; align-items: center; gap: 30px; 
-            padding-bottom: calc(25px + env(safe-area-inset-bottom)); 
-            border-top: 1px solid #15803d;
-        }
-        
-        .draw-btn { 
-            width: 75px; height: 95px; background: #c026d3; border: 3px solid #fff; 
-            border-radius: 12px; color: white; font-size: 24px; font-weight: bold; 
-            display: flex; justify-content: center; align-items: center; 
-            box-shadow: 0 5px 0 #701a75; cursor: pointer; transition: 0.1s;
-        }
-        .draw-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #701a75; }
-        .draw-btn.disabled { opacity: 0.3; pointer-events: none; filter: grayscale(1); }
-        
-        .slot { width: 75px; height: 95px; background: rgba(255,255,255,0.1); border: 2px dashed #fbbf24; border-radius: 12px; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-        .slot svg { width: 90%; height: 90%; }
+        .controls { padding: 20px; background: #000; display: flex; justify-content: center; align-items: center; gap: 30px; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+        .draw-btn { width: 80px; height: 100px; background: #15803d; border: 3px solid #fff; border-radius: 12px; font-size: 24px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+        .draw-btn.disabled { opacity: 0.3; pointer-events: none; }
+        .slot { width: 80px; height: 100px; background: #fff; border: 2px solid #fbbf24; border-radius: 12px; }
+        .slot img { width: 100%; height: 100%; }
     </style>
 </head>
 <body>
 
-<div class="header" id="msg">大滿貫連鎖 - 準備開始</div>
+<div class="header" id="msg">載入 GitHub 圖資中...</div>
 
 <div class="game-main">
     <div class="board"><div class="grid" id="grid-cpu"></div></div>
@@ -73,64 +48,40 @@
 </div>
 
 <div class="controls">
-    <div class="draw-btn" id="draw-btn" onclick="game.startByDrawing()">開 始</div>
-    <div class="slot" id="slot"></div>
+    <div class="draw-btn" id="draw-btn" onclick="game.startByDrawing()">抽</div>
+    <div id="slot" class="slot"></div>
 </div>
 
 <script>
-    const SVG_GEN = {
-        _base(isHidden) {
-            return `
-                <defs>
-                    <linearGradient id="faceGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff"/><stop offset="100%" stop-color="#e6e6e6"/></linearGradient>
-                    <linearGradient id="backGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#22c55e"/><stop offset="100%" stop-color="#166534"/></linearGradient>
-                </defs>
-                <rect x="2" y="2" width="96" height="126" rx="8" fill="#aaa" /> <rect x="2" y="2" width="94" height="124" rx="8" fill="${isHidden ? 'url(#backGrad)' : 'url(#faceGrad)'}" />
-                ${!isHidden ? '<rect x="8" y="8" width="82" height="112" rx="4" fill="none" stroke="#f0f0f0" stroke-width="1"/>' : ''}
-            `;
-        },
-        m(val) { // 萬子
-            return `<svg viewBox="0 0 100 130">${this._base(false)}<text x="50" y="65" text-anchor="middle" font-size="52" font-weight="900" fill="#dc2626">${val}</text><text x="50" y="105" text-anchor="middle" font-size="34" font-weight="900" fill="#dc2626">萬</text></svg>`;
-        },
-        p(val) { // 筒子
-            return `<svg viewBox="0 0 100 130">${this._base(false)}<text x="50" y="65" text-anchor="middle" font-size="52" font-weight="900" fill="#2563eb">${val}</text><text x="50" y="105" text-anchor="middle" font-size="34" font-weight="900" fill="#2563eb">筒</text></svg>`;
-        },
-        z() { // 紅中
-            return `<svg viewBox="0 0 100 130">${this._base(false)}<text x="50" y="90" text-anchor="middle" font-size="85" font-weight="900" fill="#be123c">中</text></svg>`;
-        },
-        hidden() {
-            return `<svg viewBox="0 0 100 130">${this._base(true)}<rect x="15" y="15" width="68" height="98" rx="4" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" stroke-dasharray="5,5"/></svg>`;
-        }
-    };
+    // GitHub 資源路徑 (使用 jsDelivr CDN)
+    const ASSET_ROOT = "https://cdn.jsdelivr.net/gh/FluffyStuff/riichi-mahjong-tiles@master/svg/bordered/";
 
     const game = {
         p1Suit: 'm', cpuSuit: 'p', deck: [], p1Data: [], cpuData: [], 
         isBusy: false, gameOver: false, pendingWild: null,
 
         init() {
-            if(Math.random() > 0.5) {
-                this.p1Suit = 'p'; this.cpuSuit = 'm';
-                this.log(`【${this.p1Suit==='p'?'筒子':'萬子'}】是你的陣地`);
-            } else {
-                this.p1Suit = 'm'; this.cpuSuit = 'p';
-                this.log(`【${this.p1Suit==='p'?'筒子':'萬子'}】是你的陣地`);
-            }
+            const isM = Math.random() > 0.5;
+            this.p1Suit = isM ? 'Man' : 'Pin';
+            this.cpuSuit = isM ? 'Pin' : 'Man';
+            this.log(`你是【${isM?'萬子':'筒子'}】，電腦是【${isM?'筒子':'萬子'}】`);
+            
             this.buildDeck();
             this.p1Data = this.deck.splice(0, 36).map(c => ({...c, hidden: true}));
             this.cpuData = this.deck.splice(0, 36).map(c => ({...c, hidden: true}));
             this.render();
-            this.bindEvents();
         },
 
         buildDeck() {
             let cards = [];
             for(let i=1; i<=9; i++) {
                 for(let n=0; n<4; n++) {
-                    cards.push({ suit: 'm', val: i, html: SVG_GEN.m(i) });
-                    cards.push({ suit: 'p', val: i, html: SVG_GEN.p(i) });
+                    cards.push({ suit: 'Man', val: i, src: `${ASSET_ROOT}Man${i}.svg` });
+                    cards.push({ suit: 'Pin', val: i, src: `${ASSET_ROOT}Pin${i}.svg` });
                 }
             }
-            cards.push({ suit: 'z', val: 7, isWild: true, html: SVG_GEN.z() });
+            // 紅中 (Chun)
+            cards.push({ suit: 'Chun', val: 7, isWild: true, src: `${ASSET_ROOT}Chun.svg` });
             this.deck = cards.sort(() => Math.random() - 0.5);
         },
 
@@ -150,96 +101,52 @@
         createTileEl(card) {
             const d = document.createElement('div');
             d.className = `tile ${card.hidden ? 'hidden' : ''}`;
-            d.innerHTML = card.hidden ? SVG_GEN.hidden() : card.html;
+            const img = document.createElement('img');
+            img.src = card.src;
+            d.appendChild(img);
             return d;
-        },
-
-        bindEvents() {
-            document.querySelectorAll('.column').forEach(el => {
-                el.onclick = () => {
-                    if (this.pendingWild && el.dataset.side === 'p1') {
-                        const col = parseInt(el.dataset.col);
-                        if (this.isColFull('p1', col)) {
-                            this.log("此列已滿，請選別列！");
-                            return;
-                        }
-                        this.resolveWild(col);
-                    }
-                };
-            });
         },
 
         async startByDrawing() {
             if(this.isBusy || this.gameOver) return;
             this.isBusy = true;
             document.getElementById('draw-btn').classList.add('disabled');
-            document.getElementById('draw-btn').innerText = "連鎖中";
             await this.handleChain(this.deck.pop(), 'p1');
+            if(!this.gameOver) document.getElementById('draw-btn').classList.remove('disabled');
             this.isBusy = false;
         },
 
-        isColFull(side, col) {
-            const data = (side === 'p1') ? this.p1Data : this.cpuData;
-            return [0,1,2,3].every(r => !data[r*9 + col].hidden);
-        },
-
         async handleChain(card, currentTurn) {
-            this.updateSlot(card);
-            await this.wait(400);
+            document.getElementById('slot').innerHTML = `<img src="${card.src}">`;
+            await new Promise(r => setTimeout(r, 400));
 
-            let side = (card.suit === this.p1Suit) ? 'p1' : 
-                       (card.suit === this.cpuSuit) ? 'cpu' : currentTurn;
+            let side = (card.suit === this.p1Suit) ? 'p1' : (card.suit === this.cpuSuit) ? 'cpu' : currentTurn;
 
             if (card.isWild && side === 'p1') {
-                this.log("★ 請點擊一列推入紅中 ★");
-                this.pendingWild = { card, side };
-                this.toggleSelectable(true);
+                this.log("★ 抽到紅中！請選擇一列推入 ★");
+                this.enableSelection(card);
                 return;
             }
 
             let col = (card.val >= 1 && card.val <= 9) ? (card.val - 1) : this.autoFindCol(side);
-            if (this.isColFull(side, col)) col = this.autoFindCol(side);
-
             await this.executePush(side, col, card);
         },
 
-        autoFindCol(side) {
-            const data = (side === 'p1') ? this.p1Data : this.cpuData;
-            let bestCol = 0, maxHidden = -1;
-            for(let c=0; c<9; c++) {
-                let hiddenCount = [0,1,2,3].filter(r => data[r*9 + c].hidden).length;
-                if(hiddenCount > maxHidden) { maxHidden = hiddenCount; bestCol = c; }
-            }
-            return bestCol;
-        },
-
-        async resolveWild(col) {
-            this.toggleSelectable(false);
-            const { card, side } = this.pendingWild;
-            this.pendingWild = null;
-            await this.executePush(side, col, card);
-        },
-
-        async executePush(side, col, card) {
-            const bumped = await this.physicsPush(side, col, card);
-            if(bumped && !this.checkWin()) {
-                bumped.hidden = false;
-                let nextTurn = (bumped.suit === this.p1Suit) ? 'p1' : 
-                               (bumped.suit === this.cpuSuit) ? 'cpu' : side;
-                await this.handleChain(bumped, nextTurn);
-            }
-        },
-
-        toggleSelectable(on) {
+        enableSelection(card) {
             document.querySelectorAll('#grid-p1 .column').forEach(el => {
-                el.classList.toggle('selectable', on);
+                el.classList.add('selectable');
+                el.onclick = () => {
+                    document.querySelectorAll('.column').forEach(c => { c.classList.remove('selectable'); c.onclick = null; });
+                    this.executePush('p1', parseInt(el.dataset.col), card);
+                };
             });
         },
 
-        async physicsPush(side, col, card) {
+        async executePush(side, col, card) {
             const data = (side === 'p1') ? this.p1Data : this.cpuData;
             const bumped = {...data[3 * 9 + col]};
-            for(let r=3; r>0; r--) data[r * 9 + col] = {...data[(r-1) * 9 + col]};
+            
+            for(let r=3; r>0; r--) data[r*9 + col] = {...data[(r-1)*9 + col]};
             data[col] = {...card, hidden: false};
 
             const colEl = document.querySelector(`#grid-${side} .column[data-col="${col}"]`);
@@ -248,28 +155,34 @@
             newTile.classList.add('animate-push');
             colEl.prepend(newTile);
 
-            await this.wait(350);
-            return bumped;
+            await new Promise(r => setTimeout(r, 300));
+
+            if(this.checkWin()) return;
+            
+            if(bumped) {
+                bumped.hidden = false;
+                let nextTurn = (bumped.suit === this.p1Suit) ? 'p1' : (bumped.suit === this.cpuSuit) ? 'cpu' : side;
+                await this.handleChain(bumped, nextTurn);
+            }
         },
 
-        updateSlot(card) {
-            document.getElementById('slot').innerHTML = card.html;
+        autoFindCol(side) {
+            const data = (side === 'p1') ? this.p1Data : this.cpuData;
+            for(let c=0; c<9; c++) if([0,1,2,3].some(r => data[r*9 + c].hidden)) return c;
+            return 0;
         },
 
         checkWin() {
             const isFull = (data) => data.every(c => !c.hidden);
             if(isFull(this.p1Data) || isFull(this.cpuData)) {
                 this.gameOver = true;
-                const win = isFull(this.p1Data);
-                this.log(win ? "🎊 大 滿 貫 勝 利 🎊" : "電腦大滿貫...下次努力");
-                document.getElementById('draw-btn').innerText = "結 束";
+                this.log(isFull(this.p1Data) ? "🎊 玩家大滿貫勝利！" : "電腦大滿貫勝利...");
                 return true;
             }
             return false;
         },
 
-        log(t) { document.getElementById('msg').innerText = t; },
-        wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+        log(t) { document.getElementById('msg').innerText = t; }
     };
 
     game.init();
