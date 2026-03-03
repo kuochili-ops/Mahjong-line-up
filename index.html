@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>大滿貫 - API 雲端圖資版</title>
+    <title>大滿貫 - 終極穩定內繪版</title>
     <style>
         :root {
             --bg-color: #064e3b;
@@ -11,46 +11,50 @@
             --tile-h: calc(var(--tile-w) * 1.35);
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg-color); margin: 0; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; color: white; }
+        body { background: var(--bg-color); margin: 0; font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; color: white; }
         
         /* 介面佈局 */
-        .header { padding: 12px; text-align: center; background: rgba(0,0,0,0.8); color: #fbbf24; font-weight: bold; border-bottom: 2px solid #15803d; }
+        .header { padding: 12px; text-align: center; background: rgba(0,0,0,0.8); color: #fbbf24; font-weight: bold; border-bottom: 2px solid #15803d; letter-spacing: 1px; }
         .game-main { flex-grow: 1; display: flex; flex-direction: column; justify-content: space-around; padding: 10px; }
         .grid { display: flex; gap: 4px; justify-content: center; }
         .column { display: flex; flex-direction: column; gap: 4px; width: var(--tile-w); border-radius: 4px; transition: 0.3s; border: 1px solid transparent; }
-        .column.selectable { background: rgba(251, 191, 36, 0.3); border-color: #fbbf24; cursor: pointer; box-shadow: 0 0 15px #fbbf24; }
+        
+        /* 紅中高亮提示 */
+        @keyframes glow { 0% { background: rgba(251, 191, 36, 0.1); } 50% { background: rgba(251, 191, 36, 0.4); } 100% { background: rgba(251, 191, 36, 0.1); } }
+        .column.selectable { animation: glow 1s infinite; border-color: #fbbf24; cursor: pointer; }
 
-        /* 牌面樣式 */
+        /* 麻將牌基礎樣式 */
         .tile { 
-            width: var(--tile-w); height: var(--tile-h); background: #fff; border-radius: 4px; 
+            width: var(--tile-w); height: var(--tile-h); 
+            background: #fff; border-radius: 4px; 
             display: flex; justify-content: center; align-items: center; 
-            box-shadow: inset -1px -1px 3px #ccc, 1px 1px 3px rgba(0,0,0,0.2);
+            box-shadow: inset -2px -2px 3px #ddd, 2px 2px 5px rgba(0,0,0,0.3);
             position: relative; overflow: hidden;
         }
-        .tile img { width: 90%; height: 95%; object-fit: contain; display: block; }
+        .tile svg { width: 90%; height: 90%; }
         
-        /* 蓋牌背面 */
+        /* 蓋牌背面樣式 */
         .tile.hidden { 
-            background: linear-gradient(135deg, #166534, #064e3b); 
-            box-shadow: inset 0 0 8px rgba(0,0,0,0.5);
+            background: linear-gradient(135deg, #16a34a, #14532d); 
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.4);
             border: 1px solid rgba(255,255,255,0.1);
         }
-        .tile.hidden img { display: none !important; }
+        .tile.hidden svg { display: none !important; }
 
         #grid-cpu { transform: rotate(180deg); }
         @keyframes pushIn { from { transform: translateY(-15px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .animate-push { animation: pushIn 0.3s ease-out forwards; }
 
-        /* 控制區 */
-        .controls { padding: 20px; background: #000; display: flex; justify-content: center; align-items: center; gap: 30px; padding-bottom: calc(25px + env(safe-area-inset-bottom)); border-top: 1px solid #15803d; }
-        .draw-btn { width: 80px; height: 100px; background: #15803d; border: 3px solid #fff; border-radius: 12px; color: #fff; font-size: 24px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; }
-        .draw-btn.disabled { opacity: 0.3; pointer-events: none; }
-        .slot { width: 80px; height: 100px; background: #fff; border: 2px solid #fbbf24; border-radius: 12px; display: flex; justify-content: center; align-items: center; }
+        /* 下方控制區 */
+        .controls { padding: 20px; background: #000; display: flex; justify-content: center; align-items: center; gap: 35px; padding-bottom: calc(25px + env(safe-area-inset-bottom)); border-top: 2px solid #15803d; }
+        .draw-btn { width: 85px; height: 105px; background: #15803d; border: 3px solid #fff; border-radius: 12px; color: #fff; font-size: 24px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 0 #052e16; }
+        .draw-btn.disabled { opacity: 0.3; pointer-events: none; transform: translateY(4px); box-shadow: none; }
+        .slot { width: 85px; height: 105px; background: #fff; border: 3px solid #fbbf24; border-radius: 12px; display: flex; justify-content: center; align-items: center; box-shadow: 0 0 15px rgba(251,191,36,0.4); }
     </style>
 </head>
 <body>
 
-<div class="header" id="msg">正在連接雲端圖資 API...</div>
+<div class="header" id="msg">大滿貫連鎖 - 經典純淨版</div>
 
 <div class="game-main">
     <div class="board"><div class="grid" id="grid-cpu"></div></div>
@@ -63,8 +67,20 @@
 </div>
 
 <script>
-    // 使用 mahgen 的 Vercel API
-    const API_BASE = "https://mahgen.vercel.app/api/tile?name=";
+    // 🎨 純前端 SVG 繪圖模組：這就是您的麻將「圖資」
+    const MahjongArt = {
+        m: (v) => `<svg viewBox="0 0 100 130">
+            <text x="50" y="70" text-anchor="middle" font-size="65" font-weight="900" fill="#dc2626">${v}</text>
+            <text x="50" y="110" text-anchor="middle" font-size="30" font-weight="900" fill="#dc2626">萬</text>
+        </svg>`,
+        p: (v) => `<svg viewBox="0 0 100 130">
+            <text x="50" y="70" text-anchor="middle" font-size="65" font-weight="900" fill="#2563eb">${v}</text>
+            <circle cx="50" cy="105" r="12" fill="#2563eb"/>
+        </svg>`,
+        z: () => `<svg viewBox="0 0 100 130">
+            <text x="50" y="95" text-anchor="middle" font-size="95" font-weight="900" fill="#b91c1c">中</text>
+        </svg>`
+    };
 
     const game = {
         p1Suit: 'm', cpuSuit: 'p', deck: [], p1Data: [], cpuData: [], 
@@ -85,12 +101,11 @@
             let cards = [];
             for(let i=1; i<=9; i++) {
                 for(let n=0; n<4; n++) {
-                    cards.push({ suit: 'm', val: i, src: `${API_BASE}m${i}` });
-                    cards.push({ suit: 'p', val: i, src: `${API_BASE}p${i}` });
+                    cards.push({ suit: 'm', val: i, html: MahjongArt.m(i) });
+                    cards.push({ suit: 'p', val: i, html: MahjongArt.p(i) });
                 }
             }
-            // 紅中
-            cards.push({ suit: 'z', val: 7, isWild: true, src: `${API_BASE}z7` });
+            cards.push({ suit: 'z', val: 7, isWild: true, html: MahjongArt.z() });
             this.deck = cards.sort(() => Math.random() - 0.5);
         },
 
@@ -110,11 +125,7 @@
         createTileEl(card) {
             const d = document.createElement('div');
             d.className = `tile ${card.hidden ? 'hidden' : ''}`;
-            const img = new Image();
-            img.src = card.src;
-            // API 載入失敗備援
-            img.onerror = () => { d.innerHTML = `<b style="color:black">${card.val}</b>`; };
-            d.appendChild(img);
+            d.innerHTML = card.html;
             return d;
         },
 
@@ -128,14 +139,13 @@
         },
 
         async handleChain(card, currentTurn) {
-            const slot = document.getElementById('slot');
-            slot.innerHTML = `<img src="${card.src}">`;
+            document.getElementById('slot').innerHTML = card.html;
             await new Promise(r => setTimeout(r, 450));
 
             let side = (card.suit === this.p1Suit) ? 'p1' : (card.suit === this.cpuSuit) ? 'cpu' : currentTurn;
 
             if (card.isWild && side === 'p1') {
-                this.log("★ 紅中！請點擊下方一列推入 ★");
+                this.log("★ 紅中在手！請選擇一列推入 ★");
                 this.toggleSelectable(true);
                 this.pendingWild = { card, side };
                 return;
@@ -191,7 +201,7 @@
             const isFull = (data) => data.every(c => !c.hidden);
             if(isFull(this.p1Data) || isFull(this.cpuData)) {
                 this.gameOver = true;
-                this.log(isFull(this.p1Data) ? "🎊 玩家大滿貫勝利！" : "電腦大滿貫勝利...");
+                this.log(isFull(this.p1Data) ? "🎊 恭喜！大滿貫勝利！" : "電腦大滿貫勝利...");
                 return true;
             }
             return false;
