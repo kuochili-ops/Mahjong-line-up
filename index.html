@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>大滿貫 - 圖片顯示修復版</title>
+    <title>大滿貫 - 內嵌圖案終極版</title>
     <style>
         :root {
             --bg-color: #064e3b;
@@ -24,13 +24,15 @@
             display: flex; justify-content: center; align-items: center; 
             box-shadow: 0 2px 2px rgba(0,0,0,0.3); border: 1px solid #ddd; flex-shrink: 0; position: relative;
         }
-        .tile img { width: 90%; height: 90%; object-fit: contain; pointer-events: none; display: block; }
-        .tile.hidden { background: linear-gradient(135deg, #1e5e3a, #0d3b24); border: 1px solid rgba(255,255,255,0.2); }
-        .tile.hidden img { display: none !important; }
+        /* 隱藏未翻開的牌面資訊 */
+        .tile.hidden { 
+            background: linear-gradient(135deg, #1e5e3a, #0d3b24); 
+            border: 1px solid rgba(255,255,255,0.2); 
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+        }
+        .tile.hidden svg, .tile.hidden .fallback { display: none !important; }
 
-        /* 圖片失效備援 */
-        .fallback-text { color: #000; font-size: 16px; font-weight: bold; flex-direction: column; }
-        .fallback-text .sub { font-size: 9px; color: #666; }
+        .tile svg { width: 85%; height: 85%; display: block; }
 
         #grid-cpu { transform: rotate(180deg); }
         @keyframes pushIn { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -57,18 +59,27 @@
 </div>
 
 <script>
-    /**
-     * 修改為 jsDelivr 代理路徑，這能極大提高圖片載入成功率
-     * 格式: https://cdn.jsdelivr.net/gh/使用者名稱/儲存庫名稱@分支/路徑
-     */
-    const IMG_BASE = "https://cdn.jsdelivr.net/gh/black-desk/mahjim@master/svg/";
+    // 內嵌 SVG 生成器，不依賴外部圖片
+    const SVG_GEN = {
+        m(val) { // 萬子：紅色的數字與萬字
+            return `<svg viewBox="0 0 100 125"><text x="50" y="55" text-anchor="middle" font-size="50" font-weight="bold" fill="#e11d48">${val}</text><text x="50" y="95" text-anchor="middle" font-size="35" font-weight="bold" fill="#e11d48">萬</text></svg>`;
+        },
+        p(val) { // 筒子：藍色圈圈
+            let dots = "";
+            if(val === 1) dots = `<circle cx="50" cy="50" r="30" fill="#2563eb" stroke="#1d4ed8" stroke-width="2"/>`;
+            else dots = `<text x="50" y="60" text-anchor="middle" font-size="55" font-weight="bold" fill="#2563eb">${val}</text><circle cx="50" cy="90" r="10" fill="#2563eb"/>`;
+            return `<svg viewBox="0 0 100 125">${dots}<text x="50" y="115" text-anchor="middle" font-size="20" font-weight="bold" fill="#2563eb">筒</text></svg>`;
+        },
+        z() { // 紅中
+            return `<svg viewBox="0 0 100 125"><text x="50" y="80" text-anchor="middle" font-size="80" font-weight="900" fill="#be123c">中</text></svg>`;
+        }
+    };
 
     const game = {
         p1Suit: 'm', cpuSuit: 'p', deck: [], p1Data: [], cpuData: [], 
         isBusy: false, gameOver: false, pendingWild: null,
 
         init() {
-            // 隨機決定花色
             if(Math.random() > 0.5) {
                 this.p1Suit = 'p'; this.cpuSuit = 'm';
                 this.log(`你是【筒子】，電腦是【萬子】`);
@@ -85,16 +96,13 @@
 
         buildDeck() {
             let cards = [];
-            const names = { 'm': '萬', 'p': '筒' };
-            // 萬子與筒子 1-9 各 4 張
             for(let i=1; i<=9; i++) {
                 for(let n=0; n<4; n++) {
-                    cards.push({ suit: 'm', val: i, label: names['m'], src: `${IMG_BASE}m${i}.svg` });
-                    cards.push({ suit: 'p', val: i, label: names['p'], src: `${IMG_BASE}p${i}.svg` });
+                    cards.push({ suit: 'm', val: i, html: SVG_GEN.m(i) });
+                    cards.push({ suit: 'p', val: i, html: SVG_GEN.p(i) });
                 }
             }
-            // 紅中 (z7)
-            cards.push({ suit: 'z', val: 7, label: '中', isWild: true, src: `${IMG_BASE}z7.svg` });
+            cards.push({ suit: 'z', val: 7, isWild: true, html: SVG_GEN.z() });
             this.deck = cards.sort(() => Math.random() - 0.5);
         },
 
@@ -114,15 +122,7 @@
         createTileEl(card) {
             const d = document.createElement('div');
             d.className = `tile ${card.hidden ? 'hidden' : ''}`;
-            
-            const img = new Image();
-            img.src = card.src;
-            img.onload = () => d.appendChild(img);
-            img.onerror = () => {
-                // 如果 CDN 還是失敗，至少會顯示文字牌
-                d.classList.add('fallback-text');
-                d.innerHTML = `<span>${card.isWild ? '中' : card.val}</span><span class="sub">${card.isWild ? '' : card.label}</span>`;
-            };
+            d.innerHTML = card.html; // 直接注入 SVG 代碼
             return d;
         },
 
@@ -216,14 +216,13 @@
             newTile.classList.add('animate-push');
             colEl.prepend(newTile);
 
-            await this.wait(250);
+            await this.wait(300);
             return bumped;
         },
 
-        updateSlot(c) {
+        updateSlot(card) {
             const s = document.getElementById('slot');
-            s.innerHTML = '';
-            s.appendChild(this.createTileEl(c));
+            s.innerHTML = card.html;
         },
 
         checkWin() {
