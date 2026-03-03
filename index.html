@@ -3,20 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>白六麻將 - 三大花色</title>
+    <title>白六麻將 - 完美螢幕適配版</title>
     <style>
         :root {
+            /* 根據螢幕寬度動態計算方塊大小，減去邊距與間隔 */
+            --tile-w: calc((100vw - 60px) / 9); 
+            --tile-h: calc(var(--tile-w) * 1.3);
+            --gap: 3px;
             --bg-color: #064e3b;
-            --tile-w: 42px; 
-            --tile-h: 56px;
-            --gap: 5px;
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: none; }
-        body { background: var(--bg-color); margin: 0; font-family: "PingFang TC", sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; color: white; }
+        body { 
+            background: var(--bg-color); margin: 0; 
+            font-family: sans-serif; height: 100vh; 
+            display: flex; flex-direction: column; 
+            overflow: hidden; color: white;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
         
-        .header { padding: 12px; text-align: center; background: rgba(0,0,0,0.8); color: #fbbf24; font-size: 18px; font-weight: bold; border-bottom: 2px solid #15803d; }
+        .header { 
+            padding: 8px; text-align: center; background: rgba(0,0,0,0.8); 
+            color: #fbbf24; font-size: 16px; font-weight: bold; 
+            border-bottom: 1px solid #15803d; flex-shrink: 0;
+        }
         
-        .game-main { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: calc(var(--tile-h) + 12px); position: relative; }
+        /* 核心遊戲區域：自動分配剩餘空間 */
+        .game-main { 
+            flex-grow: 1; display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; 
+            gap: calc(var(--tile-h) + 15px); /* 兩邊陣地的間距固定為一個牌高 */
+            padding: 5px;
+        }
         
         .grid { display: flex; gap: var(--gap); justify-content: center; position: relative; }
         .column { display: flex; flex-direction: column; gap: var(--gap); width: var(--tile-w); position: relative; }
@@ -24,38 +42,47 @@
         .entry-slot { 
             position: absolute; width: var(--tile-w); height: var(--tile-h); 
             top: calc((var(--tile-h) + var(--gap)) * -1); 
-            background: #fff; border-radius: 6px; display: flex; justify-content: center; align-items: center;
-            font-size: 38px; color: #000; box-shadow: 0 0 15px #fbbf24; z-index: 10;
+            background: #fff; border-radius: 4px; display: flex; justify-content: center; align-items: center;
+            font-size: calc(var(--tile-w) * 0.9); color: #000; box-shadow: 0 0 10px #fbbf24; z-index: 10;
             opacity: 0; pointer-events: none; transition: 0.2s;
         }
         .entry-slot.active { opacity: 1; pointer-events: auto; transform: scale(1.1); }
 
         .tile { 
-            width: var(--tile-w); height: var(--tile-h); background: #fff; border-radius: 6px; 
-            display: flex; justify-content: center; align-items: center; font-size: 38px; color: #000;
-            box-shadow: inset -2px -2px 4px #ccc, 2px 2px 5px rgba(0,0,0,0.4); 
-            transition: transform 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            width: var(--tile-w); height: var(--tile-h); background: #fff; border-radius: 4px; 
+            display: flex; justify-content: center; align-items: center; 
+            font-size: calc(var(--tile-w) * 0.9); color: #000;
+            box-shadow: inset -1px -1px 2px #ccc, 1px 1px 3px rgba(0,0,0,0.4); 
+            transition: transform 0.2s ease-out;
         }
-        .tile.hidden { background: linear-gradient(135deg, #22c55e, #14532d); color: transparent; box-shadow: inset 0 0 8px rgba(0,0,0,0.5); }
+        .tile.hidden { background: linear-gradient(135deg, #22c55e, #14532d); color: transparent; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); }
 
         #grid-cpu { transform: rotate(180deg); }
         
-        .controls { padding: 15px; background: #000; display: flex; justify-content: center; align-items: center; gap: 20px; border-top: 2px solid #15803d; }
-        .draw-btn { width: 65px; height: 80px; background: #15803d; border: 3px solid #fff; border-radius: 10px; font-size: 18px; font-weight: bold; color: #fff; cursor: pointer; }
-        .draw-btn:active { transform: translateY(2px); }
+        /* 控制區縮減高度，防止推擠 */
+        .controls { 
+            padding: 10px; background: #000; display: flex; 
+            justify-content: center; align-items: center; gap: 15px; 
+            border-top: 1px solid #15803d; flex-shrink: 0;
+        }
+        .draw-btn { 
+            width: 60px; height: 75px; background: #15803d; border: 2px solid #fff; 
+            border-radius: 8px; font-size: 16px; font-weight: bold; color: #fff; cursor: pointer;
+        }
         .draw-btn.disabled { opacity: 0.3; pointer-events: none; }
-        .slot-preview { width: 60px; height: 75px; background: #fff; border-radius: 8px; font-size: 45px; display: flex; justify-content: center; align-items: center; color: #000; box-shadow: 0 0 10px rgba(255,255,255,0.3); }
+        .slot-preview { 
+            width: 55px; height: 70px; background: #fff; border-radius: 6px; 
+            font-size: 35px; display: flex; justify-content: center; align-items: center; 
+            color: #000; box-shadow: 0 0 5px rgba(255,255,255,0.3); 
+        }
 
-        #overlay { position: fixed; inset: 0; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100; background: rgba(0,0,0,0.85); font-size: 40px; font-weight: bold; }
-        .win { color: #fbbf24; text-shadow: 0 0 20px #fbbf24; animation: pop 0.5s infinite alternate; }
-        .lose { color: #94a3b8; }
-        @keyframes pop { from { transform: scale(1); } to { transform: scale(1.15); } }
+        #overlay { position: fixed; inset: 0; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100; background: rgba(0,0,0,0.85); font-size: 30px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div id="overlay"></div>
-<div class="header" id="msg">洗牌中...</div>
+<div class="header" id="msg">載入中...</div>
 
 <div class="game-main">
     <div class="board"><div class="grid" id="grid-cpu"></div></div>
@@ -63,8 +90,8 @@
 </div>
 
 <div class="controls">
-    <div class="draw-btn" id="draw-btn" onclick="game.startByDrawing()">抽牌</div>
     <div id="slot-preview" class="slot-preview"></div>
+    <div class="draw-btn" id="draw-btn" onclick="game.startByDrawing()">抽牌</div>
 </div>
 
 <script>
@@ -77,7 +104,7 @@
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(800, this.ctx.currentTime);
             osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.1);
-            gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+            gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
             osc.connect(gain); gain.connect(this.ctx.destination);
             osc.start(); osc.stop(this.ctx.currentTime + 0.1);
@@ -90,7 +117,7 @@
         '條': ['🀐','🀑','🀒','🀓','🀔','🀕','🀖','🀗','🀘']
     };
 
-    const OTHERS = ['🀀','🀁','🀂','🀃','🀅','🀆','🀄'];
+    const OTHERS = ['🀀','🀁','🀂','🀃','🀄','🀅','🀆'];
 
     const game = {
         p1: null, cpu: null, deck: [], p1Data: [], cpuData: [],
@@ -100,11 +127,10 @@
             const keys = Object.keys(MASTERS).sort(() => Math.random() - 0.5);
             this.p1 = { name: keys[0], tiles: MASTERS[keys[0]] };
             this.cpu = { name: keys[1], tiles: MASTERS[keys[1]] };
-            this.wildName = keys[2]; // 第三種花色變成萬用牌
+            this.wildName = keys[2]; 
 
-            this.log(`你是【${this.p1.name}】，電腦是【${this.cpu.name}】`);
+            this.log(`${this.p1.name} VS ${this.cpu.name}`);
             this.buildDeck();
-            
             this.p1Data = this.deck.splice(0, 36).map(c => ({...c, hidden: true}));
             this.cpuData = this.deck.splice(0, 36).map(c => ({...c, hidden: true}));
             this.render();
@@ -112,21 +138,17 @@
 
         buildDeck() {
             let cards = [];
-            // 雙方主花色各 36 張
             [this.p1, this.cpu].forEach(group => {
                 group.tiles.forEach((char, idx) => {
                     for(let n=0; n<4; n++) cards.push({ group: group.name, val: idx+1, char: char, isWild: false });
                 });
             });
-            // 第三種花色 36 張變成萬用牌
             MASTERS[this.wildName].forEach(char => {
                 for(let n=0; n<4; n++) cards.push({ group: 'wild', val: 0, char: char, isWild: true });
             });
-            // 字牌也加入萬用牌池
             OTHERS.forEach(char => {
                 for(let n=0; n<4; n++) cards.push({ group: 'wild', val: 0, char: char, isWild: true });
             });
-
             this.deck = cards.sort(() => Math.random() - 0.5);
         },
 
@@ -165,7 +187,6 @@
             let col = (card.val >= 1 && card.val <= 9) ? (card.val - 1) : this.autoFindCol(side);
             
             if (side === 'p1') {
-                this.log(card.isWild ? "★ 萬用牌！自由滑動推入" : "請向下推入發光的牌");
                 this.waitForSlide(side, col, card, card.isWild);
             } else {
                 await new Promise(r => setTimeout(r, 600));
@@ -180,7 +201,7 @@
                 entry.innerText = card.char; entry.classList.add('active');
                 entry.ontouchstart = (e) => this.touchStartY = e.touches[0].clientY;
                 entry.ontouchend = (e) => {
-                    if ((e.changedTouches[0].clientY - this.touchStartY) > 30) {
+                    if ((e.changedTouches[0].clientY - this.touchStartY) > 25) {
                         this.clearEntries();
                         this.executePush('p1', c, card);
                     }
@@ -207,7 +228,7 @@
             const tiles = colEl.querySelectorAll('.tile');
             tiles.forEach(t => t.style.transform = 'translateY(var(--tile-h))');
             
-            await new Promise(r => setTimeout(r, 250));
+            await new Promise(r => setTimeout(r, 200));
             this.renderCol(side, col);
 
             if(this.checkWin()) return;
@@ -250,7 +271,7 @@
             this.gameOver = true;
             const overlay = document.getElementById('overlay');
             overlay.style.display = 'flex';
-            overlay.innerHTML = isWin ? '<div class="win">🎊 大 滿 貫 🎊</div>' : '<div class="lose">殘念...電腦勝</div>';
+            overlay.innerHTML = isWin ? '<div style="color:#fbbf24">🎊 大滿貫勝利 🎊</div>' : '<div style="color:#94a3b8">電腦大滿貫...</div>';
             overlay.onclick = () => location.reload();
             return true;
         },
