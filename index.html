@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>白六麻將 - 最終優化版</title>
+    <title>白六麻將 - 大字優化版</title>
     <style>
         :root {
             --full-h: 100dvh;
@@ -11,6 +11,8 @@
             --tile-h: calc(var(--tile-w) * 1.35);
             --gap: 2px;
             --bg-color: #064e3b;
+            /* 加大字體比例，使其接近框邊 */
+            --font-size: calc(var(--tile-w) * 1.05); 
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: none; }
         
@@ -34,31 +36,32 @@
         .column { 
             display: flex; flex-direction: column; gap: var(--gap); 
             width: var(--tile-w); position: relative; border-radius: 4px;
-            transition: background 0.3s;
         }
         
-        /* 萬用牌點選提示 */
         .column.highlight { 
-            background: rgba(251, 191, 36, 0.5); 
+            background: rgba(251, 191, 36, 0.4); 
             box-shadow: 0 0 15px #fbbf24; 
             z-index: 5;
         }
 
+        /* 準備推入的牌槽：字體最大化 */
         .entry-slot { 
             position: absolute; width: var(--tile-w); height: var(--tile-h); 
             top: calc((var(--tile-h) + 10px) * -1); 
             background: #fff; border-radius: 4px; display: flex; justify-content: center; align-items: center;
-            font-size: calc(var(--tile-w) * 0.8); color: #000; 
+            font-size: var(--font-size); line-height: 1; color: #000; 
             box-shadow: 0 0 15px #fbbf24; z-index: 20;
-            opacity: 0; transform: scale(0.8); transition: 0.2s;
+            opacity: 0; transform: scale(0.8); transition: 0.15s;
         }
-        .entry-slot.active { opacity: 1; transform: scale(1.1); }
+        .entry-slot.active { opacity: 1; transform: scale(1.15); }
 
+        /* 盤面牌：字體加大且垂直居中 */
         .tile { 
             width: var(--tile-w); height: var(--tile-h); background: #fff; border-radius: 3px; 
             display: flex; justify-content: center; align-items: center; 
-            font-size: calc(var(--tile-w) * 0.8); color: #000;
+            font-size: var(--font-size); line-height: 1; color: #000;
             box-shadow: inset -1px -1px 2px #ccc, 1px 1px 2px rgba(0,0,0,0.3);
+            overflow: hidden; /* 防止字體溢出 */
         }
         .tile.hidden { background: linear-gradient(135deg, #166534, #064e3b); color: transparent; border: 1px solid #052e16; }
 
@@ -66,22 +69,23 @@
         
         .controls { 
             height: 120px; background: #111; display: flex; 
-            justify-content: center; align-items: center; gap: 25px; 
+            justify-content: center; align-items: center; gap: 20px; 
             padding-bottom: env(safe-area-inset-bottom); flex-shrink: 0;
         }
         
         .draw-btn { 
             width: 75px; height: 75px; background: #15803d; border: 3px solid #fff; 
             border-radius: 50%; font-size: 18px; font-weight: bold; color: #fff; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); cursor: pointer;
         }
         .draw-btn:active { transform: scale(0.95); background: #166534; }
         .draw-btn:disabled { opacity: 0.3; }
         
+        /* 預覽框也同步放大字體 */
         .preview-box { 
-            width: 60px; height: 80px; background: #fff; border-radius: 6px; 
-            font-size: 40px; display: flex; justify-content: center; align-items: center; 
-            color: #000; border: 2px solid #fbbf24;
+            width: 65px; height: 85px; background: #fff; border-radius: 6px; 
+            font-size: 55px; display: flex; justify-content: center; align-items: center; 
+            color: #000; border: 3px solid #fbbf24;
         }
 
         #overlay { 
@@ -93,7 +97,7 @@
 </head>
 <body>
 <div id="overlay"></div>
-<div class="header" id="msg">初始化牌組中...</div>
+<div class="header" id="msg">洗牌中...</div>
 
 <div class="game-area">
     <div id="grid-cpu" class="grid"></div>
@@ -122,13 +126,20 @@
             this.p1 = { name: keys[0], tiles: MASTERS[keys[0]] };
             this.cpu = { name: keys[1], tiles: MASTERS[keys[1]] };
             
-            // 唯一萬用牌定義
             const wildPool = [...MASTERS[keys[2]], ...OTHERS];
             this.wildChar = wildPool[Math.floor(Math.random() * wildPool.length)];
 
             this.log(`玩家：${this.p1.name} | 電腦：${this.cpu.name}`);
+            this.buildDeck();
+
+            this.p1Data = this.deck.splice(0, 36).map(c => ({...c, hidden: true}));
+            this.cpuData = this.deck.splice(0, 36).map(c => ({...c, hidden: true}));
             
-            // 構建 73 張牌
+            this.render();
+            document.getElementById('draw-btn').onclick = () => this.startByDrawing();
+        },
+
+        buildDeck() {
             let cards = [];
             [this.p1, this.cpu].forEach(g => {
                 g.tiles.forEach((char, idx) => {
@@ -137,12 +148,6 @@
             });
             cards.push({ group: 'wild', val: 0, char: this.wildChar, isWild: true });
             this.deck = cards.sort(() => Math.random() - 0.5);
-
-            this.p1Data = this.deck.splice(0, 36).map(c => ({...c, hidden: true}));
-            this.cpuData = this.deck.splice(0, 36).map(c => ({...c, hidden: true}));
-            
-            this.render();
-            document.getElementById('draw-btn').onclick = () => this.startByDrawing();
         },
 
         render() {
@@ -180,7 +185,7 @@
             
             if (side === 'p1') {
                 if (card.isWild) {
-                    this.log("★ 萬用牌：請點選欲推入的行列 ★");
+                    this.log("★ 萬用牌：請點選一列推入 ★");
                     this.prepWild(card);
                 } else {
                     this.prepPush(card.val - 1, card);
@@ -204,13 +209,13 @@
         },
 
         prepPush(col, card) {
-            this.log("按住牌向下滑動推入");
+            this.log("向下滑動推入");
             const slot = document.getElementById(`slot-p1-${col}`);
             slot.innerText = card.char; slot.classList.add('active');
             
             slot.ontouchstart = (e) => this.touchStart = e.touches[0].clientY;
             slot.ontouchend = (e) => {
-                if ((e.changedTouches[0].clientY - this.touchStart) > 20) {
+                if ((e.changedTouches[0].clientY - this.touchStart) > 15) {
                     slot.classList.remove('active');
                     this.executePush('p1', col, card);
                 }
@@ -238,7 +243,7 @@
             } else {
                 this.isBusy = false;
                 document.getElementById('draw-btn').disabled = false;
-                this.log(`剩餘牌數：${this.deck.length}`);
+                this.log(`牌組剩餘：${this.deck.length}`);
             }
         },
 
