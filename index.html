@@ -3,53 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>大滿貫 - Unicode 符號版</title>
+    <title>大滿貫 - 手感滑動版</title>
     <style>
         :root {
             --bg-color: #064e3b;
-            --tile-w: calc((100vw - 44px) / 9);
-            --tile-h: calc(var(--tile-w) * 1.35);
+            --tile-w: 32px; /* 縮小方塊，貼近系統字感 */
+            --tile-h: 44px;
+            --gap: 4px;
         }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: none; }
         body { background: var(--bg-color); margin: 0; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; color: white; }
         
-        .header { padding: 12px; text-align: center; background: rgba(0,0,0,0.8); color: #fbbf24; font-weight: bold; border-bottom: 2px solid #15803d; }
-        .game-main { flex-grow: 1; display: flex; flex-direction: column; justify-content: space-around; padding: 10px; }
-        .grid { display: flex; gap: 4px; justify-content: center; }
-        .column { display: flex; flex-direction: column; gap: 4px; width: var(--tile-w); border-radius: 4px; transition: 0.3s; }
-        .column.selectable { background: rgba(251, 191, 36, 0.3); box-shadow: 0 0 10px #fbbf24; cursor: pointer; }
-
-        /* 麻將牌樣式 */
-        .tile { 
-            width: var(--tile-w); height: var(--tile-h); 
-            background: #fff; border-radius: 4px; 
-            display: flex; justify-content: center; align-items: center; 
-            font-size: calc(var(--tile-w) * 0.9); /* 自動適應螢幕大小的符號 */
-            color: #000;
-            box-shadow: inset -1px -1px 2px #ccc, 1px 1px 3px rgba(0,0,0,0.3);
-            line-height: 1;
-        }
+        .header { padding: 8px; text-align: center; background: rgba(0,0,0,0.8); color: #fbbf24; font-size: 14px; border-bottom: 1px solid #15803d; }
         
-        /* 蓋牌背面 */
-        .tile.hidden { 
-            background: linear-gradient(135deg, #22c55e, #14532d); 
-            color: transparent;
-            box-shadow: inset 0 0 8px rgba(0,0,0,0.5);
+        .game-main { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: var(--tile-h); } /* 中間空出一個方塊高度 */
+        
+        .grid { display: flex; gap: var(--gap); justify-content: center; position: relative; }
+        .column { display: flex; flex-direction: column; gap: var(--gap); width: var(--tile-w); position: relative; }
+
+        /* 預備區：顯示即將推入的牌 */
+        .entry-slot { 
+            position: absolute; width: var(--tile-w); height: var(--tile-h); 
+            top: calc((var(--tile-h) + var(--gap)) * -1); 
+            background: #fff; border-radius: 4px; display: flex; justify-content: center; align-items: center;
+            font-size: 28px; color: #000; box-shadow: 0 0 10px #fbbf24; z-index: 10;
+            opacity: 0; transform: translateY(10px); transition: 0.3s;
         }
+        .entry-slot.active { opacity: 1; transform: translateY(0); cursor: grab; }
+
+        .tile { 
+            width: var(--tile-w); height: var(--tile-h); background: #fff; border-radius: 4px; 
+            display: flex; justify-content: center; align-items: center; font-size: 28px; color: #000;
+            box-shadow: inset -1px -1px 2px #ccc, 1px 1px 2px rgba(0,0,0,0.3); transition: transform 0.3s;
+        }
+        .tile.hidden { background: linear-gradient(135deg, #22c55e, #14532d); color: transparent; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); }
 
         #grid-cpu { transform: rotate(180deg); }
-        @keyframes pushIn { from { transform: translateY(-15px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .animate-push { animation: pushIn 0.3s ease-out forwards; }
-
-        .controls { padding: 20px; background: #000; display: flex; justify-content: center; align-items: center; gap: 30px; padding-bottom: calc(25px + env(safe-area-inset-bottom)); }
-        .draw-btn { width: 80px; height: 100px; background: #15803d; border: 3px solid #fff; border-radius: 12px; font-size: 24px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+        
+        /* 縮小控制區 */
+        .controls { padding: 10px; background: #000; display: flex; justify-content: center; align-items: center; gap: 20px; border-top: 1px solid #15803d; }
+        .draw-btn { width: 50px; height: 65px; background: #15803d; border: 2px solid #fff; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; }
         .draw-btn.disabled { opacity: 0.3; pointer-events: none; }
-        .slot { width: 80px; height: 100px; background: #fff; border: 2px solid #fbbf24; border-radius: 12px; font-size: 70px; display: flex; justify-content: center; align-items: center; color: #000; }
+        .slot-preview { width: 50px; height: 65px; background: #333; border: 1px solid #555; border-radius: 8px; font-size: 32px; display: flex; justify-content: center; align-items: center; }
     </style>
 </head>
 <body>
 
-<div class="header" id="msg">Unicode 符號版：100% 不失真</div>
+<div class="header" id="msg">抽出牌後，按住牌向下滑動推入</div>
 
 <div class="game-main">
     <div class="board"><div class="grid" id="grid-cpu"></div></div>
@@ -57,27 +57,27 @@
 </div>
 
 <div class="controls">
-    <div class="draw-btn" id="draw-btn" onclick="game.startByDrawing()">抽</div>
-    <div id="slot" class="slot"></div>
+    <div class="draw-btn" id="draw-btn" onclick="game.startByDrawing()">抽牌</div>
+    <div id="slot-preview" class="slot-preview"></div>
 </div>
 
 <script>
-    // 麻將符號對照表
     const TILES = {
-        m: ['🀇','🀈','🀉','🀊','🀋','🀌','🀍','🀎','🀏'], // 萬子 1-9
-        p: ['🀙','🀚','🀛','🀜','🀝','🀞','🀟','🀠','🀡'], // 筒子 1-9
-        z: '🀄' // 紅中
+        m: ['🀇','🀈','🀉','🀊','🀋','🀌','🀍','🀎','🀏'],
+        p: ['🀙','🀚','🀛','🀜','🀝','🀞','🀟','🀠','🀡'],
+        z: '🀄'
     };
 
     const game = {
-        p1Suit: 'm', cpuSuit: 'p', deck: [], p1Data: [], cpuData: [], 
+        p1Suit: 'm', cpuSuit: 'p', deck: [], p1Data: [], cpuData: [],
         isBusy: false, gameOver: false,
+        touchStartY: 0, activeEntry: null,
 
         init() {
             const isM = Math.random() > 0.5;
             this.p1Suit = isM ? 'm' : 'p';
             this.cpuSuit = isM ? 'p' : 'm';
-            this.log(`你是【${isM?'萬子':'筒子'}】，電腦是【${isM?'筒子':'萬子'}】`);
+            this.log(`你是【${isM?'萬子':'筒子'}】`);
             this.buildDeck();
             this.p1Data = this.deck.splice(0, 36).map(c => ({...c, hidden: true}));
             this.cpuData = this.deck.splice(0, 36).map(c => ({...c, hidden: true}));
@@ -102,18 +102,23 @@
                 for(let col=0; col<9; col++) {
                     const colDiv = document.createElement('div');
                     colDiv.className = 'column'; colDiv.dataset.col = col;
-                    for(let row=0; row<4; row++) colDiv.appendChild(this.createTileEl(data[row*9+col]));
+                    
+                    // 加入推牌入口位
+                    const entry = document.createElement('div');
+                    entry.className = 'entry-slot';
+                    entry.id = `entry-${id.split('-')[1]}-${col}`;
+                    colDiv.appendChild(entry);
+
+                    for(let row=0; row<4; row++) {
+                        const t = document.createElement('div');
+                        t.className = `tile ${data[row*9+col].hidden ? 'hidden' : ''}`;
+                        t.innerText = data[row*9+col].char;
+                        colDiv.appendChild(t);
+                    }
                     el.appendChild(colDiv);
                 }
             };
             drawGrid('grid-p1', this.p1Data); drawGrid('grid-cpu', this.cpuData);
-        },
-
-        createTileEl(card) {
-            const d = document.createElement('div');
-            d.className = `tile ${card.hidden ? 'hidden' : ''}`;
-            d.innerText = card.char;
-            return d;
         },
 
         async startByDrawing() {
@@ -121,55 +126,90 @@
             this.isBusy = true;
             document.getElementById('draw-btn').classList.add('disabled');
             await this.handleChain(this.deck.pop(), 'p1');
-            if(!this.gameOver) document.getElementById('draw-btn').classList.remove('disabled');
-            this.isBusy = false;
         },
 
         async handleChain(card, currentTurn) {
-            document.getElementById('slot').innerText = card.char;
-            await new Promise(r => setTimeout(r, 450));
-
+            document.getElementById('slot-preview').innerText = card.char;
             let side = (card.suit === this.p1Suit) ? 'p1' : (card.suit === this.cpuSuit) ? 'cpu' : currentTurn;
 
-            if (card.isWild && side === 'p1') {
-                this.log("★ 抽到紅中！請點擊下方一列推入 ★");
-                this.enableSelection(card);
-                return;
-            }
-
+            // 尋找對應列
             let col = (card.val >= 1 && card.val <= 9) ? (card.val - 1) : this.autoFindCol(side);
-            await this.executePush(side, col, card);
+            
+            if (side === 'p1') {
+                this.log(card.isWild ? "紅中！請選擇一列向下滑動推入" : "請在發光的牌上向下滑動");
+                this.waitForSlide(side, col, card, card.isWild);
+            } else {
+                // 電腦自動推牌
+                await new Promise(r => setTimeout(r, 600));
+                await this.executePush('cpu', col, card);
+            }
         },
 
-        enableSelection(card) {
-            document.querySelectorAll('#grid-p1 .column').forEach(el => {
-                el.classList.add('selectable');
-                el.onclick = () => {
-                    document.querySelectorAll('.column').forEach(c => { c.classList.remove('selectable'); c.onclick = null; });
-                    this.executePush('p1', parseInt(el.dataset.col), card);
+        waitForSlide(side, targetCol, card, isWild) {
+            const cols = isWild ? [0,1,2,3,4,5,6,7,8] : [targetCol];
+            cols.forEach(c => {
+                const entry = document.getElementById(`entry-p1-${c}`);
+                entry.innerText = card.char;
+                entry.classList.add('active');
+                
+                entry.ontouchstart = (e) => this.touchStartY = e.touches[0].clientY;
+                entry.ontouchend = (e) => {
+                    const deltaY = e.changedTouches[0].clientY - this.touchStartY;
+                    if (deltaY > 20) { // 向下滑動超過 20px
+                        this.clearEntries();
+                        this.executePush('p1', c, card);
+                    }
                 };
+            });
+        },
+
+        clearEntries() {
+            document.querySelectorAll('.entry-slot').forEach(e => {
+                e.classList.remove('active');
+                e.ontouchstart = e.ontouchend = null;
             });
         },
 
         async executePush(side, col, card) {
             const data = (side === 'p1') ? this.p1Data : this.cpuData;
+            const colEl = document.querySelector(`#grid-${side} .column[data-col="${col}"]`);
+            
+            // 取得被擠出的牌
             const bumped = {...data[3 * 9 + col]};
+            
+            // 資料位移
             for(let r=3; r>0; r--) data[r*9 + col] = {...data[(r-1)*9 + col]};
             data[col] = {...card, hidden: false};
 
-            const colEl = document.querySelector(`#grid-${side} .column[data-col="${col}"]`);
-            colEl.removeChild(colEl.lastElementChild);
-            const newTile = this.createTileEl(data[col]);
-            newTile.classList.add('animate-push');
-            colEl.prepend(newTile);
+            // 視覺動畫：整列往下移
+            const tiles = colEl.querySelectorAll('.tile');
+            tiles.forEach(t => t.style.transform = 'translateY(var(--tile-h))');
+            
+            await new Promise(r => setTimeout(r, 300));
 
-            await new Promise(r => setTimeout(r, 350));
+            // 重繪該列
+            this.renderCol(side, col);
+
             if(this.checkWin()) return;
             
             if(bumped) {
                 bumped.hidden = false;
                 let nextTurn = (bumped.suit === this.p1Suit) ? 'p1' : (bumped.suit === this.cpuSuit) ? 'cpu' : side;
                 await this.handleChain(bumped, nextTurn);
+            } else {
+                this.isBusy = false;
+                document.getElementById('draw-btn').classList.remove('disabled');
+            }
+        },
+
+        renderCol(side, col) {
+            const data = (side === 'p1') ? this.p1Data : this.cpuData;
+            const colEl = document.querySelector(`#grid-${side} .column[data-col="${col}"]`);
+            const tiles = colEl.querySelectorAll('.tile');
+            for(let r=0; r<4; r++) {
+                tiles[r].className = `tile ${data[r*9+col].hidden ? 'hidden' : ''}`;
+                tiles[r].innerText = data[r*9+col].char;
+                tiles[r].style.transform = 'none';
             }
         },
 
@@ -180,10 +220,10 @@
         },
 
         checkWin() {
-            const isFull = (data) => data.every(c => !c.hidden);
+            const isFull = (d) => d.every(c => !c.hidden);
             if(isFull(this.p1Data) || isFull(this.cpuData)) {
                 this.gameOver = true;
-                this.log(isFull(this.p1Data) ? "🎊 玩家大滿貫勝利！" : "電腦大滿貫勝利...");
+                this.log(isFull(this.p1Data) ? "🎊 勝利！" : "電腦勝利");
                 return true;
             }
             return false;
