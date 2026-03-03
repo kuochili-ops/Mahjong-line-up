@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>大滿貫 - GitHub 資源修復版</title>
+    <title>大滿貫 - 經典台麻版</title>
     <style>
         :root {
             --bg-color: #064e3b;
@@ -13,41 +13,47 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg-color); margin: 0; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; color: white; }
         
-        .header { padding: 12px; text-align: center; background: rgba(0,0,0,0.8); color: #fbbf24; font-weight: bold; border-bottom: 2px solid #15803d; }
+        .header { padding: 12px; text-align: center; background: rgba(0,0,0,0.8); color: #fbbf24; font-weight: bold; border-bottom: 2px solid #15803d; font-size: 16px; }
         .game-main { flex-grow: 1; display: flex; flex-direction: column; justify-content: space-around; padding: 10px; }
         
         .grid { display: flex; gap: 4px; justify-content: center; }
-        .column { display: flex; flex-direction: column; gap: 4px; width: var(--tile-w); border-radius: 4px; transition: 0.3s; }
-        .column.selectable { background: rgba(251, 191, 36, 0.3); box-shadow: 0 0 10px #fbbf24; cursor: pointer; }
+        .column { display: flex; flex-direction: column; gap: 4px; width: var(--tile-w); border-radius: 4px; transition: 0.3s; border: 1px solid transparent; }
+        
+        /* 紅中決策提示 */
+        @keyframes glow { 0% { background: rgba(251, 191, 36, 0.1); } 50% { background: rgba(251, 191, 36, 0.4); } 100% { background: rgba(251, 191, 36, 0.1); } }
+        .column.selectable { animation: glow 1s infinite; border-color: #fbbf24; cursor: pointer; }
 
         .tile { 
             width: var(--tile-w); height: var(--tile-h); background: #fff; border-radius: 4px; 
-            display: flex; justify-content: center; align-items: center; border: 1px solid #999;
+            display: flex; justify-content: center; align-items: center; 
+            box-shadow: inset -2px -2px 4px #ccc, 2px 2px 4px rgba(0,0,0,0.3);
             position: relative; overflow: hidden;
         }
-        .tile img { width: 90%; height: 90%; object-fit: contain; display: block; }
+        .tile img { width: 90%; height: 95%; object-fit: contain; display: block; }
         
-        /* 蓋牌樣式 */
-        .tile.hidden { background: linear-gradient(135deg, #1e5e3a, #0d3b24); border: 1px solid #fff3; }
-        .tile.hidden img, .tile.hidden .fallback { display: none !important; }
-
-        /* 文字備援樣式 */
-        .fallback { color: #000; font-size: 18px; font-weight: bold; display: flex; flex-direction: column; align-items: center; }
-        .fallback span { font-size: 10px; color: #666; }
+        /* 蓋牌狀態：完全隱藏圖片內容 */
+        .tile.hidden { 
+            background: linear-gradient(135deg, #22c55e, #166534); 
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .tile.hidden img { display: none !important; }
 
         #grid-cpu { transform: rotate(180deg); }
-        .animate-push { animation: pushIn 0.3s ease-out; }
+        .animate-push { animation: pushIn 0.3s ease-out forwards; }
         @keyframes pushIn { from { transform: translateY(-15px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-        .controls { padding: 20px; background: #000; display: flex; justify-content: center; align-items: center; gap: 30px; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
-        .draw-btn { width: 80px; height: 100px; background: #15803d; border: 3px solid #fff; border-radius: 12px; font-size: 24px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; }
-        .draw-btn.disabled { opacity: 0.3; pointer-events: none; }
-        .slot { width: 80px; height: 100px; background: #fff; border: 2px solid #fbbf24; border-radius: 12px; display: flex; justify-content: center; align-items: center; }
+        .controls { padding: 20px; background: #000; display: flex; justify-content: center; align-items: center; gap: 40px; padding-bottom: calc(25px + env(safe-area-inset-bottom)); border-top: 1px solid #15803d; }
+        .draw-btn { width: 85px; height: 105px; background: #15803d; border: 4px solid #fff; border-radius: 15px; color: #fff; font-size: 26px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; box-shadow: 0 5px 0 #052e16; }
+        .draw-btn.disabled { opacity: 0.3; pointer-events: none; transform: translateY(5px); box-shadow: none; }
+        
+        .slot { width: 85px; height: 105px; background: #fff; border: 3px solid #fbbf24; border-radius: 15px; display: flex; justify-content: center; align-items: center; box-shadow: 0 0 15px rgba(251, 191, 36, 0.5); }
+        .slot img { width: 90%; height: 95%; object-fit: contain; }
     </style>
 </head>
 <body>
 
-<div class="header" id="msg">同步 GitHub 資源中...</div>
+<div class="header" id="msg">抽籤決定陣地...</div>
 
 <div class="game-main">
     <div class="board"><div class="grid" id="grid-cpu"></div></div>
@@ -60,8 +66,8 @@
 </div>
 
 <script>
-    // 使用 jsDelivr CDN 讀取 black-desk/mahjim 的資源
-    const ASSET_ROOT = "https://cdn.jsdelivr.net/gh/black-desk/mahjim@master/svg/";
+    // 使用 jsDelivr 代理 eric03742/mahgen 的圖片資源
+    const ASSET_ROOT = "https://cdn.jsdelivr.net/gh/eric03742/mahgen@master/mahjong_tiles/";
 
     const game = {
         p1Suit: 'm', cpuSuit: 'p', deck: [], p1Data: [], cpuData: [], 
@@ -80,14 +86,15 @@
 
         buildDeck() {
             let cards = [];
-            const labels = { m: '萬', p: '筒', z: '中' };
+            // 萬子(m) 1-9, 筒子(p) 1-9 各四張
             for(let i=1; i<=9; i++) {
                 for(let n=0; n<4; n++) {
-                    cards.push({ suit: 'm', val: i, label: labels.m, src: `${ASSET_ROOT}m${i}.svg` });
-                    cards.push({ suit: 'p', val: i, label: labels.p, src: `${ASSET_ROOT}p${i}.svg` });
+                    cards.push({ suit: 'm', val: i, src: `${ASSET_ROOT}m${i}.png` });
+                    cards.push({ suit: 'p', val: i, src: `${ASSET_ROOT}p${i}.png` });
                 }
             }
-            cards.push({ suit: 'z', val: 7, label: labels.z, isWild: true, src: `${ASSET_ROOT}z7.svg` });
+            // 紅中 (z7) 一張
+            cards.push({ suit: 'z', val: 7, isWild: true, src: `${ASSET_ROOT}z7.png` });
             this.deck = cards.sort(() => Math.random() - 0.5);
         },
 
@@ -107,18 +114,8 @@
         createTileEl(card) {
             const d = document.createElement('div');
             d.className = `tile ${card.hidden ? 'hidden' : ''}`;
-            
-            const img = document.createElement('img');
+            const img = new Image();
             img.src = card.src;
-            // 圖片載入失敗時的處理
-            img.onerror = () => {
-                img.style.display = 'none';
-                const fall = document.createElement('div');
-                fall.className = 'fallback';
-                fall.innerHTML = `${card.isWild ? '中' : card.val}<span>${card.isWild ? '' : card.label}</span>`;
-                d.appendChild(fall);
-            };
-            
             d.appendChild(img);
             return d;
         },
@@ -134,16 +131,15 @@
 
         async handleChain(card, currentTurn) {
             const slot = document.getElementById('slot');
-            slot.innerHTML = '';
-            slot.appendChild(this.createTileEl(card));
-            
+            slot.innerHTML = `<img src="${card.src}">`;
             await new Promise(r => setTimeout(r, 450));
 
             let side = (card.suit === this.p1Suit) ? 'p1' : (card.suit === this.cpuSuit) ? 'cpu' : currentTurn;
 
             if (card.isWild && side === 'p1') {
-                this.log("★ 紅中在手！請選擇一列推入 ★");
-                this.enableSelection(card);
+                this.log("★ 紅中！請點擊下方任一列推入 ★");
+                this.toggleSelectable(true);
+                this.pendingWild = { card, side };
                 return;
             }
 
@@ -151,14 +147,18 @@
             await this.executePush(side, col, card);
         },
 
-        enableSelection(card) {
+        toggleSelectable(on) {
             document.querySelectorAll('#grid-p1 .column').forEach(el => {
-                el.classList.add('selectable');
-                el.onclick = () => {
-                    document.querySelectorAll('.column').forEach(c => { c.classList.remove('selectable'); c.onclick = null; });
-                    this.executePush('p1', parseInt(el.dataset.col), card);
-                };
+                el.classList.toggle('selectable', on);
+                el.onclick = on ? () => this.resolveWild(parseInt(el.dataset.col)) : null;
             });
+        },
+
+        async resolveWild(col) {
+            const { card, side } = this.pendingWild;
+            this.pendingWild = null;
+            this.toggleSelectable(false);
+            await this.executePush(side, col, card);
         },
 
         async executePush(side, col, card) {
@@ -195,7 +195,7 @@
             const isFull = (data) => data.every(c => !c.hidden);
             if(isFull(this.p1Data) || isFull(this.cpuData)) {
                 this.gameOver = true;
-                this.log(isFull(this.p1Data) ? "🎊 玩家大滿貫勝利！" : "電腦大滿貫勝利...");
+                this.log(isFull(this.p1Data) ? "🎊 恭喜！大滿貫勝利！" : "電腦大滿貫勝利...");
                 return true;
             }
             return false;
