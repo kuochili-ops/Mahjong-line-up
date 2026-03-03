@@ -3,50 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>大滿貫 - 內嵌圖案終極版</title>
+    <title>大滿貫 - 專業對戰版</title>
     <style>
         :root {
             --bg-color: #064e3b;
-            --tile-w: calc((100vw - 40px) / 9);
+            --tile-w: calc((100vw - 44px) / 9);
             --tile-h: calc(var(--tile-w) * 1.35);
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg-color); margin: 0; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; color: white; }
+        body { background: var(--bg-color); margin: 0; font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; color: white; }
         
-        .header { padding: 10px; text-align: center; background: rgba(0,0,0,0.8); color: #fbbf24; font-weight: bold; border-bottom: 2px solid #15803d; font-size: 14px; min-height: 44px; }
-        .game-main { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; gap: 30px; padding: 10px; }
-        .grid { display: flex; gap: 2px; justify-content: center; }
-        .column { display: flex; flex-direction: column; gap: 2px; width: var(--tile-w); background: rgba(0,0,0,0.3); border-radius: 4px; padding: 1px; transition: 0.3s; }
-        .column.selectable { background: rgba(251, 191, 36, 0.4); box-shadow: 0 0 15px #fbbf24; cursor: pointer; }
+        .header { padding: 10px; text-align: center; background: rgba(0,0,0,0.8); color: #fbbf24; font-weight: bold; border-bottom: 2px solid #15803d; font-size: 15px; letter-spacing: 1px; }
+        
+        .game-main { flex-grow: 1; display: flex; flex-direction: column; justify-content: space-evenly; padding: 10px; }
+        
+        .board { position: relative; }
+        .grid { display: flex; gap: 3px; justify-content: center; }
+        
+        .column { 
+            display: flex; flex-direction: column; gap: 3px; width: var(--tile-w); 
+            background: rgba(255,255,255,0.05); border-radius: 4px; padding: 2px; 
+            transition: all 0.3s; border: 1px solid transparent;
+        }
+        
+        /* 紅中可選時的呼吸燈效果 */
+        @keyframes glow { 0% { border-color: #fbbf24; box-shadow: 0 0 5px #fbbf24; } 50% { border-color: #fff; box-shadow: 0 0 15px #fff; } 100% { border-color: #fbbf24; box-shadow: 0 0 5px #fbbf24; } }
+        .column.selectable { background: rgba(251, 191, 36, 0.2); animation: glow 1.5s infinite; cursor: pointer; }
 
         .tile { 
-            width: var(--tile-w); height: var(--tile-h); background: #fff; border-radius: 4px; 
+            width: var(--tile-w); height: var(--tile-h); 
             display: flex; justify-content: center; align-items: center; 
-            box-shadow: 0 2px 2px rgba(0,0,0,0.3); border: 1px solid #ddd; flex-shrink: 0; position: relative;
+            flex-shrink: 0; position: relative;
         }
-        /* 隱藏未翻開的牌面資訊 */
-        .tile.hidden { 
-            background: linear-gradient(135deg, #1e5e3a, #0d3b24); 
-            border: 1px solid rgba(255,255,255,0.2); 
-            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
-        }
-        .tile.hidden svg, .tile.hidden .fallback { display: none !important; }
-
-        .tile svg { width: 85%; height: 85%; display: block; }
+        
+        .tile svg { width: 100%; height: 100%; display: block; border-radius: 3px; }
 
         #grid-cpu { transform: rotate(180deg); }
-        @keyframes pushIn { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .animate-push { animation: pushIn 0.2s ease-out forwards; }
+        
+        @keyframes pushIn { 0% { transform: translateY(-10px); opacity: 0.5; } 100% { transform: translateY(0); opacity: 1; } }
+        .animate-push { animation: pushIn 0.25s ease-out forwards; }
 
-        .controls { padding: 20px; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; gap: 30px; padding-bottom: calc(25px + env(safe-area-inset-bottom)); }
-        .draw-btn { width: 80px; height: 100px; background: #15803d; border: 4px solid #fff; border-radius: 15px; color: white; font-size: 26px; font-weight: bold; display: flex; justify-content: center; align-items: center; box-shadow: 0 6px 0 #052e16; cursor: pointer; }
-        .draw-btn.disabled { opacity: 0.4; pointer-events: none; }
-        .slot { width: 80px; height: 100px; background: #fff; border: 4px solid #fbbf24; border-radius: 15px; display: flex; justify-content: center; align-items: center; }
+        .controls { 
+            padding: 20px; background: linear-gradient(0deg, #000 0%, rgba(0,0,0,0.8) 100%); 
+            display: flex; justify-content: center; align-items: center; gap: 30px; 
+            padding-bottom: calc(25px + env(safe-area-inset-bottom)); 
+            border-top: 1px solid #15803d;
+        }
+        
+        .draw-btn { 
+            width: 75px; height: 95px; background: #c026d3; border: 3px solid #fff; 
+            border-radius: 12px; color: white; font-size: 24px; font-weight: bold; 
+            display: flex; justify-content: center; align-items: center; 
+            box-shadow: 0 5px 0 #701a75; cursor: pointer; transition: 0.1s;
+        }
+        .draw-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #701a75; }
+        .draw-btn.disabled { opacity: 0.3; pointer-events: none; filter: grayscale(1); }
+        
+        .slot { width: 75px; height: 95px; background: rgba(255,255,255,0.1); border: 2px dashed #fbbf24; border-radius: 12px; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        .slot svg { width: 90%; height: 90%; }
     </style>
 </head>
 <body>
 
-<div class="header" id="msg">抽籤決定花色...</div>
+<div class="header" id="msg">大滿貫連鎖 - 準備開始</div>
 
 <div class="game-main">
     <div class="board"><div class="grid" id="grid-cpu"></div></div>
@@ -54,24 +73,33 @@
 </div>
 
 <div class="controls">
-    <div class="draw-btn" id="draw-btn" onclick="game.startByDrawing()">抽</div>
+    <div class="draw-btn" id="draw-btn" onclick="game.startByDrawing()">開 始</div>
     <div class="slot" id="slot"></div>
 </div>
 
 <script>
-    // 內嵌 SVG 生成器，不依賴外部圖片
     const SVG_GEN = {
-        m(val) { // 萬子：紅色的數字與萬字
-            return `<svg viewBox="0 0 100 125"><text x="50" y="55" text-anchor="middle" font-size="50" font-weight="bold" fill="#e11d48">${val}</text><text x="50" y="95" text-anchor="middle" font-size="35" font-weight="bold" fill="#e11d48">萬</text></svg>`;
+        _base(isHidden) {
+            return `
+                <defs>
+                    <linearGradient id="faceGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff"/><stop offset="100%" stop-color="#e6e6e6"/></linearGradient>
+                    <linearGradient id="backGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#22c55e"/><stop offset="100%" stop-color="#166534"/></linearGradient>
+                </defs>
+                <rect x="2" y="2" width="96" height="126" rx="8" fill="#aaa" /> <rect x="2" y="2" width="94" height="124" rx="8" fill="${isHidden ? 'url(#backGrad)' : 'url(#faceGrad)'}" />
+                ${!isHidden ? '<rect x="8" y="8" width="82" height="112" rx="4" fill="none" stroke="#f0f0f0" stroke-width="1"/>' : ''}
+            `;
         },
-        p(val) { // 筒子：藍色圈圈
-            let dots = "";
-            if(val === 1) dots = `<circle cx="50" cy="50" r="30" fill="#2563eb" stroke="#1d4ed8" stroke-width="2"/>`;
-            else dots = `<text x="50" y="60" text-anchor="middle" font-size="55" font-weight="bold" fill="#2563eb">${val}</text><circle cx="50" cy="90" r="10" fill="#2563eb"/>`;
-            return `<svg viewBox="0 0 100 125">${dots}<text x="50" y="115" text-anchor="middle" font-size="20" font-weight="bold" fill="#2563eb">筒</text></svg>`;
+        m(val) { // 萬子
+            return `<svg viewBox="0 0 100 130">${this._base(false)}<text x="50" y="65" text-anchor="middle" font-size="52" font-weight="900" fill="#dc2626">${val}</text><text x="50" y="105" text-anchor="middle" font-size="34" font-weight="900" fill="#dc2626">萬</text></svg>`;
+        },
+        p(val) { // 筒子
+            return `<svg viewBox="0 0 100 130">${this._base(false)}<text x="50" y="65" text-anchor="middle" font-size="52" font-weight="900" fill="#2563eb">${val}</text><text x="50" y="105" text-anchor="middle" font-size="34" font-weight="900" fill="#2563eb">筒</text></svg>`;
         },
         z() { // 紅中
-            return `<svg viewBox="0 0 100 125"><text x="50" y="80" text-anchor="middle" font-size="80" font-weight="900" fill="#be123c">中</text></svg>`;
+            return `<svg viewBox="0 0 100 130">${this._base(false)}<text x="50" y="90" text-anchor="middle" font-size="85" font-weight="900" fill="#be123c">中</text></svg>`;
+        },
+        hidden() {
+            return `<svg viewBox="0 0 100 130">${this._base(true)}<rect x="15" y="15" width="68" height="98" rx="4" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" stroke-dasharray="5,5"/></svg>`;
         }
     };
 
@@ -82,10 +110,10 @@
         init() {
             if(Math.random() > 0.5) {
                 this.p1Suit = 'p'; this.cpuSuit = 'm';
-                this.log(`你是【筒子】，電腦是【萬子】`);
+                this.log(`【${this.p1Suit==='p'?'筒子':'萬子'}】是你的陣地`);
             } else {
                 this.p1Suit = 'm'; this.cpuSuit = 'p';
-                this.log(`你是【萬子】，電腦是【筒子】`);
+                this.log(`【${this.p1Suit==='p'?'筒子':'萬子'}】是你的陣地`);
             }
             this.buildDeck();
             this.p1Data = this.deck.splice(0, 36).map(c => ({...c, hidden: true}));
@@ -122,7 +150,7 @@
         createTileEl(card) {
             const d = document.createElement('div');
             d.className = `tile ${card.hidden ? 'hidden' : ''}`;
-            d.innerHTML = card.html; // 直接注入 SVG 代碼
+            d.innerHTML = card.hidden ? SVG_GEN.hidden() : card.html;
             return d;
         },
 
@@ -131,7 +159,10 @@
                 el.onclick = () => {
                     if (this.pendingWild && el.dataset.side === 'p1') {
                         const col = parseInt(el.dataset.col);
-                        if (this.isColFull('p1', col)) return;
+                        if (this.isColFull('p1', col)) {
+                            this.log("此列已滿，請選別列！");
+                            return;
+                        }
                         this.resolveWild(col);
                     }
                 };
@@ -142,6 +173,7 @@
             if(this.isBusy || this.gameOver) return;
             this.isBusy = true;
             document.getElementById('draw-btn').classList.add('disabled');
+            document.getElementById('draw-btn').innerText = "連鎖中";
             await this.handleChain(this.deck.pop(), 'p1');
             this.isBusy = false;
         },
@@ -159,7 +191,7 @@
                        (card.suit === this.cpuSuit) ? 'cpu' : currentTurn;
 
             if (card.isWild && side === 'p1') {
-                this.log("★ 紅中在手！請選擇你的任一列推入 ★");
+                this.log("★ 請點擊一列推入紅中 ★");
                 this.pendingWild = { card, side };
                 this.toggleSelectable(true);
                 return;
@@ -216,20 +248,21 @@
             newTile.classList.add('animate-push');
             colEl.prepend(newTile);
 
-            await this.wait(300);
+            await this.wait(350);
             return bumped;
         },
 
         updateSlot(card) {
-            const s = document.getElementById('slot');
-            s.innerHTML = card.html;
+            document.getElementById('slot').innerHTML = card.html;
         },
 
         checkWin() {
             const isFull = (data) => data.every(c => !c.hidden);
             if(isFull(this.p1Data) || isFull(this.cpuData)) {
                 this.gameOver = true;
-                this.log(isFull(this.p1Data) ? "玩家大滿貫勝利！" : "電腦大滿貫勝利！");
+                const win = isFull(this.p1Data);
+                this.log(win ? "🎊 大 滿 貫 勝 利 🎊" : "電腦大滿貫...下次努力");
+                document.getElementById('draw-btn').innerText = "結 束";
                 return true;
             }
             return false;
