@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>白六麻將 - 絕對居中版</title>
+    <title>白六麻將 - 中心修正版</title>
     <style>
         :root {
             --full-h: 100dvh;
@@ -11,7 +11,6 @@
             --tile-h: calc(var(--tile-w) * 1.35);
             --gap: 2px;
             --bg-color: #064e3b;
-            /* 讓字體剛好填滿但留一點邊距 */
             --font-size: calc(var(--tile-w) * 0.95); 
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: none; }
@@ -33,24 +32,21 @@
         }
         
         .grid { display: flex; gap: var(--gap); justify-content: center; }
-        .column { 
-            display: flex; flex-direction: column; gap: var(--gap); 
-            width: var(--tile-w); position: relative;
-        }
+        .column { display: flex; flex-direction: column; gap: var(--gap); width: var(--tile-w); position: relative; }
         
-        .column.highlight { 
-            background: rgba(251, 191, 36, 0.4); 
-            box-shadow: 0 0 15px #fbbf24; 
-            z-index: 5;
-        }
+        .column.highlight { background: rgba(251, 191, 36, 0.4); box-shadow: 0 0 15px #fbbf24; z-index: 5; }
 
-        /* 通用牌面樣式，確保文字絕對居中 */
+        /* 核心修正：字體置中邏輯 */
         .tile-base {
             background: #fff; border-radius: 3px; 
             display: flex; justify-content: center; align-items: center; 
-            color: #000; line-height: 1;
-            /* 關鍵：微調 padding-top 補償麻將字體的視覺偏移 */
-            padding-top: 2px; 
+            color: #000; 
+            /* 修正字體偏低問題：
+               1. line-height 設小縮減字距
+               2. 利用 padding-bottom 將字體往上推
+            */
+            line-height: 0.8;
+            padding-bottom: 6px; 
             overflow: hidden;
         }
 
@@ -68,6 +64,7 @@
             font-size: var(--font-size);
             box-shadow: inset -1px -1px 2px #ccc, 1px 1px 2px rgba(0,0,0,0.3);
         }
+        /* 背面不套用置中修正 */
         .tile.hidden { background: linear-gradient(135deg, #166534, #064e3b); color: transparent; border: 1px solid #052e16; padding: 0; }
 
         #grid-cpu { transform: rotate(180deg); }
@@ -100,7 +97,7 @@
 </head>
 <body>
 <div id="overlay"></div>
-<div class="header" id="msg">洗牌中...</div>
+<div class="header" id="msg">正在準備...</div>
 
 <div class="game-area">
     <div id="grid-cpu" class="grid"></div>
