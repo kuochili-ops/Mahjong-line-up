@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>白六麻將 - 大字優化版</title>
+    <title>白六麻將 - 絕對居中版</title>
     <style>
         :root {
             --full-h: 100dvh;
@@ -11,8 +11,8 @@
             --tile-h: calc(var(--tile-w) * 1.35);
             --gap: 2px;
             --bg-color: #064e3b;
-            /* 加大字體比例，使其接近框邊 */
-            --font-size: calc(var(--tile-w) * 1.05); 
+            /* 讓字體剛好填滿但留一點邊距 */
+            --font-size: calc(var(--tile-w) * 0.95); 
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: none; }
         
@@ -35,7 +35,7 @@
         .grid { display: flex; gap: var(--gap); justify-content: center; }
         .column { 
             display: flex; flex-direction: column; gap: var(--gap); 
-            width: var(--tile-w); position: relative; border-radius: 4px;
+            width: var(--tile-w); position: relative;
         }
         
         .column.highlight { 
@@ -44,26 +44,31 @@
             z-index: 5;
         }
 
-        /* 準備推入的牌槽：字體最大化 */
+        /* 通用牌面樣式，確保文字絕對居中 */
+        .tile-base {
+            background: #fff; border-radius: 3px; 
+            display: flex; justify-content: center; align-items: center; 
+            color: #000; line-height: 1;
+            /* 關鍵：微調 padding-top 補償麻將字體的視覺偏移 */
+            padding-top: 2px; 
+            overflow: hidden;
+        }
+
         .entry-slot { 
             position: absolute; width: var(--tile-w); height: var(--tile-h); 
             top: calc((var(--tile-h) + 10px) * -1); 
-            background: #fff; border-radius: 4px; display: flex; justify-content: center; align-items: center;
-            font-size: var(--font-size); line-height: 1; color: #000; 
+            font-size: var(--font-size);
             box-shadow: 0 0 15px #fbbf24; z-index: 20;
             opacity: 0; transform: scale(0.8); transition: 0.15s;
         }
         .entry-slot.active { opacity: 1; transform: scale(1.15); }
 
-        /* 盤面牌：字體加大且垂直居中 */
         .tile { 
-            width: var(--tile-w); height: var(--tile-h); background: #fff; border-radius: 3px; 
-            display: flex; justify-content: center; align-items: center; 
-            font-size: var(--font-size); line-height: 1; color: #000;
+            width: var(--tile-w); height: var(--tile-h); 
+            font-size: var(--font-size);
             box-shadow: inset -1px -1px 2px #ccc, 1px 1px 2px rgba(0,0,0,0.3);
-            overflow: hidden; /* 防止字體溢出 */
         }
-        .tile.hidden { background: linear-gradient(135deg, #166534, #064e3b); color: transparent; border: 1px solid #052e16; }
+        .tile.hidden { background: linear-gradient(135deg, #166534, #064e3b); color: transparent; border: 1px solid #052e16; padding: 0; }
 
         #grid-cpu { transform: rotate(180deg); }
         
@@ -81,11 +86,9 @@
         .draw-btn:active { transform: scale(0.95); background: #166534; }
         .draw-btn:disabled { opacity: 0.3; }
         
-        /* 預覽框也同步放大字體 */
         .preview-box { 
-            width: 65px; height: 85px; background: #fff; border-radius: 6px; 
-            font-size: 55px; display: flex; justify-content: center; align-items: center; 
-            color: #000; border: 3px solid #fbbf24;
+            width: 65px; height: 85px; font-size: 50px; 
+            border: 3px solid #fbbf24; border-radius: 6px;
         }
 
         #overlay { 
@@ -105,7 +108,7 @@
 </div>
 
 <div class="controls">
-    <div id="slot-preview" class="preview-box"></div>
+    <div id="slot-preview" class="preview-box tile-base"></div>
     <button id="draw-btn" class="draw-btn">抽牌</button>
 </div>
 
@@ -125,7 +128,6 @@
             const keys = Object.keys(MASTERS).sort(() => Math.random() - 0.5);
             this.p1 = { name: keys[0], tiles: MASTERS[keys[0]] };
             this.cpu = { name: keys[1], tiles: MASTERS[keys[1]] };
-            
             const wildPool = [...MASTERS[keys[2]], ...OTHERS];
             this.wildChar = wildPool[Math.floor(Math.random() * wildPool.length)];
 
@@ -158,11 +160,11 @@
                     const col = document.createElement('div');
                     col.className = 'column'; col.dataset.col = c;
                     const slot = document.createElement('div');
-                    slot.className = 'entry-slot'; slot.id = `slot-${id.split('-')[1]}-${c}`;
+                    slot.className = 'entry-slot tile-base'; slot.id = `slot-${id.split('-')[1]}-${c}`;
                     col.appendChild(slot);
                     for(let r=0; r<4; r++) {
                         const t = document.createElement('div');
-                        t.className = `tile ${data[r*9+c].hidden ? 'hidden' : ''}`;
+                        t.className = `tile tile-base ${data[r*9+c].hidden ? 'hidden' : ''}`;
                         t.innerText = data[r*9+c].char;
                         col.appendChild(t);
                     }
@@ -185,7 +187,7 @@
             
             if (side === 'p1') {
                 if (card.isWild) {
-                    this.log("★ 萬用牌：請點選一列推入 ★");
+                    this.log("★ 萬用牌：請點選一列 ★");
                     this.prepWild(card);
                 } else {
                     this.prepPush(card.val - 1, card);
@@ -251,7 +253,7 @@
             const data = (side === 'p1') ? this.p1Data : this.cpuData;
             const tiles = document.querySelectorAll(`#grid-${side} .column[data-col="${col}"] .tile`);
             for(let r=0; r<4; r++) {
-                tiles[r].className = `tile ${data[r*9+col].hidden ? 'hidden' : ''}`;
+                tiles[r].className = `tile tile-base ${data[r*9+col].hidden ? 'hidden' : ''}`;
                 tiles[r].innerText = data[r*9+col].char;
                 tiles[r].style.transform = 'none';
             }
@@ -272,7 +274,7 @@
         end(win) {
             const o = document.getElementById('overlay');
             o.style.display = 'flex';
-            o.innerHTML = win ? '<span style="color:#fbbf24">🎉 你贏了！</span>' : '<span>電腦獲勝...</span>';
+            o.innerHTML = win ? '🎉 你贏了！' : '電腦獲勝...';
             o.onclick = () => location.reload();
             return true;
         },
