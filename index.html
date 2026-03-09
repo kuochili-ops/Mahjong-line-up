@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>白六麻將 - 中心修正版</title>
+    <title>白六麻將 - 動態回饋版</title>
     <style>
         :root {
             --full-h: 100dvh;
@@ -24,6 +24,7 @@
         .header { 
             height: 44px; display: flex; align-items: center; justify-content: center;
             background: #000; color: #fbbf24; font-size: 14px; font-weight: bold; flex-shrink: 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
         }
         
         .game-area { 
@@ -32,40 +33,51 @@
         }
         
         .grid { display: flex; gap: var(--gap); justify-content: center; }
-        .column { display: flex; flex-direction: column; gap: var(--gap); width: var(--tile-w); position: relative; }
+        .column { 
+            display: flex; flex-direction: column; gap: var(--gap); 
+            width: var(--tile-w); position: relative;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
         
-        .column.highlight { background: rgba(251, 191, 36, 0.4); box-shadow: 0 0 15px #fbbf24; z-index: 5; }
+        /* 萬用牌選中特效 */
+        .column.highlight { 
+            background: rgba(251, 191, 36, 0.3); 
+            border-radius: 4px;
+            box-shadow: 0 0 20px #fbbf24;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; }
+        }
 
-        /* 核心修正：字體置中邏輯 */
         .tile-base {
             background: #fff; border-radius: 3px; 
             display: flex; justify-content: center; align-items: center; 
-            color: #000; 
-            /* 修正字體偏低問題：
-               1. line-height 設小縮減字距
-               2. 利用 padding-bottom 將字體往上推
-            */
-            line-height: 0.8;
-            padding-bottom: 6px; 
+            color: #000; line-height: 0.8;
+            padding-bottom: 6px; /* 修正字體偏低 */
             overflow: hidden;
         }
 
+        /* 推入槽位的動畫 */
         .entry-slot { 
             position: absolute; width: var(--tile-w); height: var(--tile-h); 
-            top: calc((var(--tile-h) + 10px) * -1); 
+            top: calc((var(--tile-h) + 12px) * -1); 
             font-size: var(--font-size);
-            box-shadow: 0 0 15px #fbbf24; z-index: 20;
-            opacity: 0; transform: scale(0.8); transition: 0.15s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4), 0 0 10px #fbbf24; z-index: 20;
+            opacity: 0; transform: translateY(-10px) scale(0.8); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        .entry-slot.active { opacity: 1; transform: scale(1.15); }
+        .entry-slot.active { opacity: 1; transform: translateY(0) scale(1.1); }
 
         .tile { 
             width: var(--tile-w); height: var(--tile-h); 
             font-size: var(--font-size);
-            box-shadow: inset -1px -1px 2px #ccc, 1px 1px 2px rgba(0,0,0,0.3);
+            box-shadow: inset -1px -1px 2px #ccc, 1px 1px 3px rgba(0,0,0,0.4);
         }
-        /* 背面不套用置中修正 */
-        .tile.hidden { background: linear-gradient(135deg, #166534, #064e3b); color: transparent; border: 1px solid #052e16; padding: 0; }
+        .tile.hidden { 
+            background: linear-gradient(135deg, #166534, #064e3b); 
+            border: 1px solid #052e16; padding: 0;
+            box-shadow: inset 1px 1px 2px rgba(255,255,255,0.1);
+        }
 
         #grid-cpu { transform: rotate(180deg); }
         
@@ -73,31 +85,45 @@
             height: 120px; background: #111; display: flex; 
             justify-content: center; align-items: center; gap: 20px; 
             padding-bottom: env(safe-area-inset-bottom); flex-shrink: 0;
+            border-top: 1px solid #333;
         }
         
         .draw-btn { 
-            width: 75px; height: 75px; background: #15803d; border: 3px solid #fff; 
-            border-radius: 50%; font-size: 18px; font-weight: bold; color: #fff; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5); cursor: pointer;
+            width: 80px; height: 80px; background: linear-gradient(to bottom, #22c55e, #15803d); 
+            border: 3px solid #fff; border-radius: 50%; font-size: 18px; font-weight: bold; color: #fff; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.6); cursor: pointer;
+            transition: transform 0.1s;
         }
-        .draw-btn:active { transform: scale(0.95); background: #166534; }
-        .draw-btn:disabled { opacity: 0.3; }
+        .draw-btn:active { transform: scale(0.9); }
+        .draw-btn:disabled { opacity: 0.3; filter: grayscale(1); }
         
+        /* 預覽框與萬用牌金光 */
         .preview-box { 
-            width: 65px; height: 85px; font-size: 50px; 
+            width: 65px; height: 85px; font-size: 55px; 
             border: 3px solid #fbbf24; border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .preview-box.is-wild {
+            animation: wild-glow 0.8s infinite alternate;
+            box-shadow: 0 0 20px #fbbf24;
+            border-color: #fff;
+        }
+        @keyframes wild-glow {
+            from { transform: scale(1); box-shadow: 0 0 10px #fbbf24; }
+            to { transform: scale(1.05); box-shadow: 0 0 25px #fbbf24; }
         }
 
         #overlay { 
             position: fixed; inset: 0; display: none; flex-direction: column; 
             justify-content: center; align-items: center; z-index: 100; 
             background: rgba(0,0,0,0.9); font-size: 32px; font-weight: bold;
+            backdrop-filter: blur(5px);
         }
     </style>
 </head>
 <body>
 <div id="overlay"></div>
-<div class="header" id="msg">正在準備...</div>
+<div class="header" id="msg">白六麻將</div>
 
 <div class="game-area">
     <div id="grid-cpu" class="grid"></div>
@@ -128,17 +154,8 @@
             const wildPool = [...MASTERS[keys[2]], ...OTHERS];
             this.wildChar = wildPool[Math.floor(Math.random() * wildPool.length)];
 
-            this.log(`玩家：${this.p1.name} | 電腦：${this.cpu.name}`);
-            this.buildDeck();
-
-            this.p1Data = this.deck.splice(0, 36).map(c => ({...c, hidden: true}));
-            this.cpuData = this.deck.splice(0, 36).map(c => ({...c, hidden: true}));
+            this.log(`【${this.p1.name}】vs【${this.cpu.name}】`);
             
-            this.render();
-            document.getElementById('draw-btn').onclick = () => this.startByDrawing();
-        },
-
-        buildDeck() {
             let cards = [];
             [this.p1, this.cpu].forEach(g => {
                 g.tiles.forEach((char, idx) => {
@@ -147,6 +164,12 @@
             });
             cards.push({ group: 'wild', val: 0, char: this.wildChar, isWild: true });
             this.deck = cards.sort(() => Math.random() - 0.5);
+
+            this.p1Data = this.deck.splice(0, 36).map(c => ({...c, hidden: true}));
+            this.cpuData = this.deck.splice(0, 36).map(c => ({...c, hidden: true}));
+            
+            this.render();
+            document.getElementById('draw-btn').onclick = () => this.startByDrawing();
         },
 
         render() {
@@ -175,23 +198,36 @@
             if(this.isBusy || this.gameOver) return;
             this.isBusy = true;
             document.getElementById('draw-btn').disabled = true;
+
+            // 仿洗牌動畫
+            const preview = document.getElementById('slot-preview');
+            for(let i=0; i<6; i++) {
+                preview.innerText = OTHERS[Math.floor(Math.random()*OTHERS.length)];
+                await new Promise(r => setTimeout(r, 50));
+            }
+
             await this.handleChain(this.deck.pop(), 'p1');
         },
 
         async handleChain(card, turn) {
-            document.getElementById('slot-preview').innerText = card.char;
+            const preview = document.getElementById('slot-preview');
+            preview.innerText = card.char;
+            
+            if(card.isWild) preview.classList.add('is-wild');
+            else preview.classList.remove('is-wild');
+
             let side = card.isWild ? turn : (card.group === this.p1.name ? 'p1' : (card.group === this.cpu.name ? 'cpu' : turn));
             
             if (side === 'p1') {
                 if (card.isWild) {
-                    this.log("★ 萬用牌：請點選一列 ★");
+                    this.log("★ 萬用牌！請點選一列 ★");
                     this.prepWild(card);
                 } else {
                     this.prepPush(card.val - 1, card);
                 }
             } else {
                 let col = card.isWild ? this.aiCol() : (card.val - 1);
-                await new Promise(r => setTimeout(r, 700));
+                await new Promise(r => setTimeout(r, 800));
                 await this.executePush('cpu', col, card);
             }
         },
@@ -208,7 +244,7 @@
         },
 
         prepPush(col, card) {
-            this.log("向下滑動推入");
+            this.log("下滑推入");
             const slot = document.getElementById(`slot-p1-${col}`);
             slot.innerText = card.char; slot.classList.add('active');
             
@@ -228,11 +264,17 @@
             data[col] = {...card, hidden: false};
 
             const colEl = document.querySelector(`#grid-${side} .column[data-col="${col}"]`);
+            // 推入時整欄下沉回彈效果
+            colEl.style.transform = (side === 'p1') ? 'translateY(8px)' : 'translateY(-8px)';
+            
             const tiles = colEl.querySelectorAll('.tile');
-            tiles.forEach(t => t.style.transition = '0.2s');
-            tiles.forEach(t => t.style.transform = 'translateY(var(--tile-h))');
+            tiles.forEach(t => {
+                t.style.transition = 'transform 0.2s cubic-bezier(0.2, 0, 0.2, 1)';
+                t.style.transform = 'translateY(var(--tile-h))';
+            });
             
             await new Promise(r => setTimeout(r, 200));
+            colEl.style.transform = 'none';
             this.renderCol(side, col);
 
             if(this.checkWin()) return;
@@ -242,7 +284,8 @@
             } else {
                 this.isBusy = false;
                 document.getElementById('draw-btn').disabled = false;
-                this.log(`牌組剩餘：${this.deck.length}`);
+                document.getElementById('slot-preview').classList.remove('is-wild');
+                this.log(`剩餘：${this.deck.length}`);
             }
         },
 
@@ -271,7 +314,7 @@
         end(win) {
             const o = document.getElementById('overlay');
             o.style.display = 'flex';
-            o.innerHTML = win ? '🎉 你贏了！' : '電腦獲勝...';
+            o.innerHTML = win ? '🎊 勝利！ 🎊' : '電腦獲勝...';
             o.onclick = () => location.reload();
             return true;
         },
